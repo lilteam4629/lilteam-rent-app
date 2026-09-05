@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <%- include('_head-style') %>
+</head>
+<body class="min-h-screen">
+  <header class="border-b border-[var(--border)]">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="/my-shops" class="font-bold text-sm">← ร้านของฉัน</a>
+      <% if (currentUser) { %><span class="text-sm text-[var(--text-3)]">ยอดคงเหลือ: <span class="text-[var(--gold)] font-semibold">฿<%= currentUser.walletBalance.toLocaleString() %></span></span><% } %>
+    </div>
+  </header>
+
+  <section class="max-w-lg mx-auto px-4 py-10">
+    <h1 class="text-2xl font-bold mb-1">💰 เติมเงิน</h1>
+    <p class="text-sm text-[var(--text-3)] mb-6">แจ้งจำนวนเงินแล้วแนบสลิปโอน ระบบตรวจสอบให้อัตโนมัติ</p>
+
+    <% messages.error.forEach(m => { %><div class="bg-[var(--coral)]/10 border border-[var(--coral)]/50 text-[var(--coral)] px-4 py-2 rounded-lg mb-3 text-sm text-center"><%= m %></div><% }) %>
+    <% messages.success.forEach(m => { %><div class="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 px-4 py-2 rounded-lg mb-3 text-sm text-center"><%= m %></div><% }) %>
+
+    <form action="/wallet/topup" method="post" enctype="multipart/form-data" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-3 mb-8">
+      <div>
+        <label class="block text-xs mb-1 text-[var(--text-3)]">จำนวนเงิน (บาท)</label>
+        <input name="amount" type="number" min="1" step="1" required class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+      </div>
+      <div>
+        <label class="block text-xs mb-1 text-[var(--text-3)]">ช่องทางโอน</label>
+        <select name="method" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm">
+          <option value="promptpay">พร้อมเพย์</option>
+          <option value="bank_transfer">โอนธนาคาร</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs mb-1 text-[var(--text-3)]">แนบสลิปโอนเงิน (ไม่เกิน 5MB)</label>
+        <input name="slip" type="file" accept="image/*" class="block w-full text-sm text-[var(--text-3)] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[var(--input)] file:text-[var(--gold)] file:text-sm" />
+      </div>
+      <button class="w-full bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg py-2.5 text-sm">ยืนยันการเติมเงิน</button>
+    </form>
+
+    <h2 class="text-sm font-semibold text-[var(--text-3)] mb-3">ประวัติล่าสุด</h2>
+    <% if (!topups.length) { %>
+      <p class="text-sm text-[var(--text-4)]">ยังไม่มีประวัติการเติมเงิน</p>
+    <% } else { %>
+      <div class="space-y-2">
+        <% topups.forEach(t => { %>
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-lg p-3 flex items-center justify-between text-sm">
+            <div>
+              <div class="font-medium">฿<%= t.amount.toLocaleString() %> <span class="text-[var(--text-4)] font-mono text-xs"><%= t.refCode %></span></div>
+              <div class="text-xs text-[var(--text-4)]"><%= new Date(t.createdAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' }) %></div>
+            </div>
+            <span class="text-xs font-semibold px-2 py-1 rounded-full
+              <%= t.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' : t.status === 'rejected' ? 'bg-[var(--coral)]/10 text-[var(--coral)]' : 'bg-amber-500/10 text-amber-400' %>">
+              <%= t.status === 'approved' ? 'อนุมัติแล้ว' : t.status === 'rejected' ? 'ถูกปฏิเสธ' : t.status === 'verifying' ? 'กำลังตรวจสอบ' : 'รอดำเนินการ' %>
+            </span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</body>
+</html>

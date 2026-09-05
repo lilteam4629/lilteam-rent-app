@@ -1,0 +1,32 @@
+services:
+  rent-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: /opt/lilteam/rent-app.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Internal Docker hostname of the main app's service (NOT a public
+      # *.lilteam.site URL — see .env.example for why this matters).
+      MAIN_API_BASE_URL: http://app:3000
+    ports:
+      - "127.0.0.1:3001:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    networks: [main_internal]
+
+networks:
+  main_internal:
+    # This must be the ACTUAL name of the main app's Docker network, not a
+    # guess. Find it on the VPS with `docker network ls` (look for the
+    # network the main app's "app" and "mongodb" containers are attached
+    # to — with compose project name "community" it's typically
+    # "community_internal", but confirm rather than assume) and replace
+    # the value below if different.
+    name: community_internal
+    external: true
