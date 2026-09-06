@@ -68,9 +68,39 @@ app.use((req, res, next) => {
 });
 
 // ---------- Landing ----------
+// Pulls a few real product image URLs straight from the live main site's
+// homepage HTML so the "real shop" showcase never shows fake/mockup images.
+// Cached briefly since it's just decorative and the main site is on a
+// separate box — no need to hit it on every single landing-page view.
+let showcaseImagesCache = { images: [], fetchedAt: 0 };
+async function getShowcaseImages() {
+  const CACHE_MS = 10 * 60 * 1000;
+  if (Date.now() - showcaseImagesCache.fetchedAt < CACHE_MS) return showcaseImagesCache.images;
+  try {
+    const axios = require('axios');
+    const res = await axios.get(MAIN_SITE_URL, { timeout: 5000 });
+    const html = res.data;
+    // Only real product photos (class="latest-order-image"), never the site logo.
+    const imgTags = html.match(/<img[^>]+>/g) || [];
+    const productSrcs = imgTags
+      .filter((tag) => tag.includes('latest-order-image'))
+      .map((tag) => (tag.match(/src="([^"]+)"/) || [])[1])
+      .filter(Boolean);
+    const unique = [...new Set(productSrcs)].slice(0, 4);
+    if (unique.length) showcaseImagesCache = { images: unique, fetchedAt: Date.now() };
+  } catch {
+    // Keep serving whatever's cached (or empty) — the page still works fine without it.
+  }
+  return showcaseImagesCache.images;
+}
+
 app.get('/', async (req, res) => {
-  const plansRes = await mainApi.plans();
-  res.render('home', { title: `เช่าเว็บร้านค้าออนไลน์ | ${SHOP_NAME} Cloud`, plans: plansRes.ok ? plansRes.body.plans : [] });
+  const [plansRes, showcaseImages] = await Promise.all([mainApi.plans(), getShowcaseImages()]);
+  res.render('home', {
+    title: `เช่าเว็บร้านค้าออนไลน์ | ${SHOP_NAME} Cloud`,
+    plans: plansRes.ok ? plansRes.body.plans : [],
+    showcaseImages,
+  });
 });
 
 // ---------- Auth ----------
