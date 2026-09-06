@@ -5,5 +5,11 @@
     --gold:#c8a63f; --gold-hover:#dbb94d; --gold-light:#e8d48a; --gold-dark:#8a6f28;
     --coral:#e2836f;
   }
-  body{font-family:'Kanit',sans-serif;background:var(--bg);color:var(--text);}
+  :root[data-theme="light"]{
+    --bg:#faf7ee; --card:#ffffff; --border:#e5ddc4; --border-light:#ded2a8; --input:#f2ecd8;
+    --text:#2a2410; --text-2:#4a4020; --text-3:#7a6f47; --text-4:#a89a6c;
+    --gold:#a4823a; --gold-hover:#8a6f28; --gold-light:#c8a63f; --gold-dark:#8a6f28;
+    --coral:#c14f36;
+  }
+  body{font-family:'Kanit',sans-serif;background:var(--bg);color:var(--text);transition:background .15s,color .15s;}
 </style>

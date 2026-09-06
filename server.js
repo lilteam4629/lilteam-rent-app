@@ -127,7 +127,6 @@ app.get('/admin', requireAdmin, async (req, res) => {
     title: 'จัดการเว็บเช่าร้าน',
     showcaseImages: settings.get().showcaseImages || [],
     showcaseIsCustom: !!(settings.get().showcaseImages && settings.get().showcaseImages.length),
-    mainSitePlansUrl: `${MAIN_SITE_URL}/admin/license-plans`,
   });
 });
 
@@ -191,6 +190,90 @@ app.post('/admin/logo', requireAdmin, upload.single('logo'), (req, res) => {
   settings.update({ logoImage: `/uploads/${filename}` });
   req.flash('success', 'อัปโหลดโลโก้ใหม่แล้ว');
   res.redirect('/admin');
+});
+
+// ---------- Admin: plans (proxies the main site's own plan store) ----------
+app.get('/admin/plans', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminListPlans();
+  if (!result.ok) {
+    req.flash('error', (result.body && result.body.error) || 'โหลดแพ็กเกจไม่สำเร็จ');
+    return res.render('admin-plans', { title: 'แพ็กเกจราคา', plans: [] });
+  }
+  res.render('admin-plans', { title: 'แพ็กเกจราคา', plans: result.body.plans });
+});
+
+app.post('/admin/plans', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminCreatePlan(req.body);
+  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'เพิ่มแพ็กเกจไม่สำเร็จ');
+  else req.flash('success', 'เพิ่มแพ็กเกจแล้ว');
+  res.redirect('/admin/plans');
+});
+
+app.post('/admin/plans/:id', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminEditPlan(req.params.id, req.body);
+  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'แก้ไขแพ็กเกจไม่สำเร็จ');
+  else req.flash('success', 'บันทึกแพ็กเกจแล้ว');
+  res.redirect('/admin/plans');
+});
+
+app.post('/admin/plans/:id/toggle', requireAdmin, async (req, res) => {
+  await mainApi.adminTogglePlan(req.params.id);
+  res.redirect('/admin/plans');
+});
+
+app.post('/admin/plans/:id/delete', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminDeletePlan(req.params.id);
+  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'ลบแพ็กเกจไม่สำเร็จ');
+  else req.flash('success', 'ลบแพ็กเกจแล้ว');
+  res.redirect('/admin/plans');
+});
+
+// ---------- Admin: topups / slip review ----------
+app.get('/admin/topups', requireAdmin, async (req, res) => {
+  const status = ['pending', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : '';
+  const q = String(req.query.q || '');
+  const result = await mainApi.adminListTopups({ status, q });
+  res.render('admin-topups', {
+    title: 'เติมเงิน/สลิป',
+    requests: result.ok ? result.body.requests : [],
+    status,
+    q,
+  });
+});
+
+app.get('/admin/topups/:id/slip', requireAdmin, async (req, res) => {
+  try {
+    const upstream = await mainApi.adminSlipStream(req.params.id);
+    res.setHeader('Content-Type', upstream.headers['content-type'] || 'application/octet-stream');
+    upstream.data.pipe(res);
+  } catch {
+    res.sendStatus(404);
+  }
+});
+
+app.post('/admin/topups/:id/approve', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminApproveTopup(req.params.id);
+  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'อนุมัติไม่สำเร็จ');
+  else req.flash('success', 'อนุมัติคำขอเติมเงินแล้ว');
+  res.redirect('/admin/topups');
+});
+
+app.post('/admin/topups/:id/reject', requireAdmin, async (req, res) => {
+  const result = await mainApi.adminRejectTopup(req.params.id, req.body.reviewNote);
+  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'ปฏิเสธไม่สำเร็จ');
+  else req.flash('success', 'ปฏิเสธคำขอแล้ว');
+  res.redirect('/admin/topups');
+});
+
+// ---------- Admin: users ----------
+app.get('/admin/users', requireAdmin, async (req, res) => {
+  const q = String(req.query.q || '');
+  const result = await mainApi.adminListUsers({ q });
+  res.render('admin-users', {
+    title: 'บัญชีผู้ใช้',
+    users: result.ok ? result.body.users : [],
+    q,
+  });
 });
 
 // ---------- Landing ----------

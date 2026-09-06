@@ -1,0 +1,36 @@
+<div class="border-b border-[var(--border)] mb-6 pb-4">
+  <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+    <div>
+      <h1 class="text-xl font-bold">จัดการเว็บเช่าร้าน</h1>
+      <p class="text-sm text-[var(--text-3)]">แผงควบคุมสำหรับแอดมิน</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="admin-theme-toggle" type="button" class="text-xs border border-[var(--border-light)] rounded-lg px-3 py-1.5 hover:border-[var(--gold)] transition-colors">🌗 สลับธีม</button>
+      <form action="/admin/logout" method="post">
+        <button class="text-xs text-[var(--text-3)] hover:text-[var(--gold)] underline">ออกจากระบบ</button>
+      </form>
+    </div>
+  </div>
+  <nav class="flex flex-wrap gap-2 text-sm">
+    <% const navItems = [
+      { key: 'branding', href: '/admin', label: 'แบรนด์' },
+      { key: 'plans', href: '/admin/plans', label: 'แพ็กเกจราคา' },
+      { key: 'topups', href: '/admin/topups', label: 'เติมเงิน/สลิป' },
+      { key: 'users', href: '/admin/users', label: 'บัญชีผู้ใช้' },
+    ]; %>
+    <% navItems.forEach(function (item) { %>
+      <a href="<%= item.href %>" class="px-3 py-1.5 rounded-lg font-medium transition-colors <%= active === item.key ? 'bg-[var(--gold)] text-[var(--bg)]' : 'bg-[var(--input)] text-[var(--text-3)] hover:text-[var(--gold)]' %>"><%= item.label %></a>
+    <% }) %>
+  </nav>
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('admin-theme-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('rentAdminTheme', next); } catch (e) {}
+    });
+  })();
+</script>

@@ -8,18 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <%- include('_head-style') %>
+  <%- include('_theme-init') %>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
   <div class="max-w-lg mx-auto">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-xl font-bold">จัดการเว็บเช่าร้าน</h1>
-        <p class="text-sm text-[var(--text-3)]">แก้ชื่อร้านและโลโก้ที่แสดงบนหน้าแรก</p>
-      </div>
-      <form action="/admin/logout" method="post">
-        <button class="text-xs text-[var(--text-3)] hover:text-[var(--gold)] underline">ออกจากระบบ</button>
-      </form>
-    </div>
+    <%- include('_admin-nav', { active: 'branding' }) %>
 
     <% messages.error.forEach(m => { %>
       <div class="bg-[var(--coral)]/10 border border-[var(--coral)]/50 text-[var(--coral)] px-4 py-2 rounded-lg mb-3 text-sm"><%= m %></div>
@@ -111,12 +104,6 @@
         </form>
       <% } %>
       <p class="text-xs text-[var(--text-4)] mt-2">สูงสุด 4 รูป</p>
-    </div>
-
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 mt-4">
-      <h2 class="font-semibold mb-2">แพ็กเกจราคา</h2>
-      <p class="text-sm text-[var(--text-3)] mb-3">แพ็กเกจ/ราคาเช่าร้านดึงมาจากเว็บหลักโดยตรง แก้ไขได้ที่หน้าตั้งค่าเว็บหลัก (คนละระบบ ต้องล็อกอินแอดมินเว็บหลักแยกต่างหาก)</p>
-      <a href="<%= mainSitePlansUrl %>" target="_blank" rel="noopener" class="inline-block bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">ไปหน้าแก้แพ็กเกจ ↗</a>
     </div>
   </div>
 </body>
