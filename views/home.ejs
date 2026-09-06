@@ -44,6 +44,9 @@
         <a href="#packages" class="hover:text-[var(--gold)] transition-colors">แพ็กเกจ</a>
       </nav>
       <div class="flex items-center gap-2">
+        <% if (isAdmin) { %>
+          <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้าน</a>
+        <% } %>
         <% if (currentUser) { %>
           <a href="/wallet" class="hidden sm:inline-block border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">เติมเงิน</a>
           <a href="/my-shops" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm">จัดการร้านของฉัน</a>

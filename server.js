@@ -36,6 +36,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 app.use((req, res, next) => {
   res.locals.messages = { success: req.flash('success'), error: req.flash('error') };
   res.locals.currentUser = req.session.user || null;
+  res.locals.isAdmin = !!req.session.isAdmin;
   next();
 });
 
