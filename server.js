@@ -64,6 +64,8 @@ const DEFAULT_SHOP_NAME = process.env.SHOP_NAME || 'LilTeam Shop';
 const DEFAULT_LOGO_IMAGE = process.env.LOGO_IMAGE || null;
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน์ของคุณ\nใน 1 นาที';
+const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 
 function currentShopName() {
   return settings.get().shopName || DEFAULT_SHOP_NAME;
@@ -71,12 +73,24 @@ function currentShopName() {
 function currentLogoImage() {
   return settings.get().logoImage || DEFAULT_LOGO_IMAGE;
 }
+function currentHeroTitle() {
+  return settings.get().heroTitle || DEFAULT_HERO_TITLE;
+}
+function currentHeroSubtitle() {
+  return settings.get().heroSubtitle || DEFAULT_HERO_SUBTITLE;
+}
+function isHeroTitleCustomized() {
+  return !!settings.get().heroTitle;
+}
 
 app.use((req, res, next) => {
   res.locals.mainDomain = MAIN_DOMAIN;
   res.locals.mainSiteUrl = MAIN_SITE_URL;
   res.locals.shopName = currentShopName();
   res.locals.logoImage = currentLogoImage();
+  res.locals.heroTitle = currentHeroTitle();
+  res.locals.heroSubtitle = currentHeroSubtitle();
+  res.locals.heroCustomized = isHeroTitleCustomized();
   next();
 });
 
@@ -108,13 +122,61 @@ app.post('/admin/logout', (req, res) => {
   res.redirect('/admin/login');
 });
 
-app.get('/admin', requireAdmin, (req, res) => {
-  res.render('admin', { title: 'จัดการเว็บเช่าร้าน' });
+app.get('/admin', requireAdmin, async (req, res) => {
+  res.render('admin', {
+    title: 'จัดการเว็บเช่าร้าน',
+    showcaseImages: settings.get().showcaseImages || [],
+    showcaseIsCustom: !!(settings.get().showcaseImages && settings.get().showcaseImages.length),
+    mainSitePlansUrl: `${MAIN_SITE_URL}/admin/license-plans`,
+  });
 });
 
 app.post('/admin/settings', requireAdmin, (req, res) => {
   settings.update({ shopName: (req.body.shopName || '').trim() || undefined });
   req.flash('success', 'บันทึกการตั้งค่าแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/hero', requireAdmin, (req, res) => {
+  settings.update({
+    heroTitle: (req.body.heroTitle || '').trim() || undefined,
+    heroSubtitle: (req.body.heroSubtitle || '').trim() || undefined,
+  });
+  req.flash('success', 'บันทึกข้อความหัวเว็บแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/hero/reset', requireAdmin, (req, res) => {
+  settings.update({ heroTitle: undefined, heroSubtitle: undefined });
+  req.flash('success', 'รีเซ็ตข้อความหัวเว็บเป็นค่าเริ่มต้นแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/showcase-images', requireAdmin, upload.single('image'), (req, res) => {
+  if (!req.file) {
+    req.flash('error', 'กรุณาเลือกไฟล์รูปภาพ');
+    return res.redirect('/admin');
+  }
+  const ext = path.extname(req.file.originalname) || '.jpg';
+  const filename = `showcase-${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(settings.UPLOADS_DIR, filename), req.file.buffer);
+  const current = settings.get().showcaseImages || [];
+  settings.update({ showcaseImages: [...current, `/uploads/${filename}`].slice(-4) });
+  req.flash('success', 'เพิ่มรูปตัวอย่างร้านค้าแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/showcase-images/:index/remove', requireAdmin, (req, res) => {
+  const current = settings.get().showcaseImages || [];
+  const next = current.filter((_, i) => i !== Number(req.params.index));
+  settings.update({ showcaseImages: next });
+  req.flash('success', 'ลบรูปแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/showcase-images/reset', requireAdmin, (req, res) => {
+  settings.update({ showcaseImages: [] });
+  req.flash('success', 'เปลี่ยนกลับเป็นดึงรูปอัตโนมัติจากเว็บหลักแล้ว');
   res.redirect('/admin');
 });
 
@@ -138,6 +200,9 @@ app.post('/admin/logo', requireAdmin, upload.single('logo'), (req, res) => {
 // separate box — no need to hit it on every single landing-page view.
 let showcaseImagesCache = { images: [], fetchedAt: 0 };
 async function getShowcaseImages() {
+  const custom = settings.get().showcaseImages;
+  if (custom && custom.length) return custom;
+
   const CACHE_MS = 10 * 60 * 1000;
   if (Date.now() - showcaseImagesCache.fetchedAt < CACHE_MS) return showcaseImagesCache.images;
   try {

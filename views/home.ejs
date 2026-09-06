@@ -68,11 +68,15 @@
   <section class="hero-glow relative overflow-hidden">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-16 pb-14 text-center">
       <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-5">
-        เปิดร้านค้า<span class="grad-text">ออนไลน์</span>ของคุณ<br class="hidden sm:block" />
-        ใน <span class="grad-text">1 นาที</span>
+        <% if (heroCustomized) { %>
+          <span class="grad-text" style="white-space: pre-line;"><%= heroTitle %></span>
+        <% } else { %>
+          เปิดร้านค้า<span class="grad-text">ออนไลน์</span>ของคุณ<br class="hidden sm:block" />
+          ใน <span class="grad-text">1 นาที</span>
+        <% } %>
       </h1>
       <p class="text-[var(--text-3)] text-base sm:text-lg max-w-2xl mx-auto mb-8">
-        เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด
+        <%= heroSubtitle %>
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
         <a href="#packages" class="w-full sm:w-auto text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold px-7 py-3 rounded-xl transition-transform hover:-translate-y-0.5">ดูแพ็กเกจทั้งหมด</a>
