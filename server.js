@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
@@ -5,6 +6,7 @@ const flash = require('connect-flash');
 const multer = require('multer');
 const FormData = require('form-data');
 const mainApi = require('./lib/mainApi');
+const settings = require('./lib/settings');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +17,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(settings.UPLOADS_DIR));
 
 // This app holds no sensitive data of its own — every real fact (users,
 // shops, wallet balance) lives behind the internal API on the main app.
@@ -56,15 +59,75 @@ async function refreshSessionUser(req) {
 
 const MAIN_SITE_URL = process.env.MAIN_SITE_URL || 'https://lilteam.site';
 const MAIN_DOMAIN = MAIN_SITE_URL.replace(/^https?:\/\//, '');
-const SHOP_NAME = process.env.SHOP_NAME || 'LilTeam Shop';
-const LOGO_IMAGE = process.env.LOGO_IMAGE || null;
+const DEFAULT_SHOP_NAME = process.env.SHOP_NAME || 'LilTeam Shop';
+const DEFAULT_LOGO_IMAGE = process.env.LOGO_IMAGE || null;
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || null;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+
+function currentShopName() {
+  return settings.get().shopName || DEFAULT_SHOP_NAME;
+}
+function currentLogoImage() {
+  return settings.get().logoImage || DEFAULT_LOGO_IMAGE;
+}
 
 app.use((req, res, next) => {
   res.locals.mainDomain = MAIN_DOMAIN;
   res.locals.mainSiteUrl = MAIN_SITE_URL;
-  res.locals.shopName = SHOP_NAME;
-  res.locals.logoImage = LOGO_IMAGE;
+  res.locals.shopName = currentShopName();
+  res.locals.logoImage = currentLogoImage();
   next();
+});
+
+function requireAdmin(req, res, next) {
+  if (!req.session.isAdmin) {
+    req.flash('error', 'กรุณาเข้าสู่ระบบผู้ดูแลก่อน');
+    return res.redirect('/admin/login');
+  }
+  next();
+}
+
+app.get('/admin/login', (req, res) => res.render('admin-login', { title: 'เข้าสู่ระบบผู้ดูแล' }));
+
+app.post('/admin/login', (req, res) => {
+  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+    req.flash('error', 'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า ADMIN_USERNAME/ADMIN_PASSWORD');
+    return res.redirect('/admin/login');
+  }
+  if (req.body.username !== ADMIN_USERNAME || req.body.password !== ADMIN_PASSWORD) {
+    req.flash('error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    return res.redirect('/admin/login');
+  }
+  req.session.isAdmin = true;
+  res.redirect('/admin');
+});
+
+app.post('/admin/logout', (req, res) => {
+  req.session.isAdmin = false;
+  res.redirect('/admin/login');
+});
+
+app.get('/admin', requireAdmin, (req, res) => {
+  res.render('admin', { title: 'จัดการเว็บเช่าร้าน' });
+});
+
+app.post('/admin/settings', requireAdmin, (req, res) => {
+  settings.update({ shopName: (req.body.shopName || '').trim() || undefined });
+  req.flash('success', 'บันทึกการตั้งค่าแล้ว');
+  res.redirect('/admin');
+});
+
+app.post('/admin/logo', requireAdmin, upload.single('logo'), (req, res) => {
+  if (!req.file) {
+    req.flash('error', 'กรุณาเลือกไฟล์รูปภาพ');
+    return res.redirect('/admin');
+  }
+  const ext = path.extname(req.file.originalname) || '.png';
+  const filename = `logo-${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(settings.UPLOADS_DIR, filename), req.file.buffer);
+  settings.update({ logoImage: `/uploads/${filename}` });
+  req.flash('success', 'อัปโหลดโลโก้ใหม่แล้ว');
+  res.redirect('/admin');
 });
 
 // ---------- Landing ----------
@@ -97,7 +160,7 @@ async function getShowcaseImages() {
 app.get('/', async (req, res) => {
   const [plansRes, showcaseImages] = await Promise.all([mainApi.plans(), getShowcaseImages()]);
   res.render('home', {
-    title: `เช่าเว็บร้านค้าออนไลน์ | ${SHOP_NAME} Cloud`,
+    title: `เช่าเว็บร้านค้าออนไลน์ | ${currentShopName()} Cloud`,
     plans: plansRes.ok ? plansRes.body.plans : [],
     showcaseImages,
   });
@@ -142,7 +205,7 @@ app.post('/register', async (req, res) => {
   }
   req.session.userId = result.body.user.id;
   req.session.user = result.body.user;
-  req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${SHOP_NAME} Cloud`);
+  req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${currentShopName()} Cloud`);
   res.redirect('/');
 });
 

@@ -13,6 +13,10 @@ services:
       MAIN_API_BASE_URL: http://app:3000
     ports:
       - "127.0.0.1:3001:3000"
+    volumes:
+      # Admin-panel settings (shop name, uploaded logo) live here so they
+      # survive `docker compose up -d --build` on every auto-deploy.
+      - rent-app-data:/app/data
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 15s
@@ -30,3 +34,6 @@ networks:
     # the value below if different.
     name: community_internal
     external: true
+
+volumes:
+  rent-app-data:

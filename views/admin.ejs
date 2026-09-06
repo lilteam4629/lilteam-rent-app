@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <%- include('_head-style') %>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+  <div class="max-w-lg mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold">จัดการเว็บเช่าร้าน</h1>
+        <p class="text-sm text-[var(--text-3)]">แก้ชื่อร้านและโลโก้ที่แสดงบนหน้าแรก</p>
+      </div>
+      <form action="/admin/logout" method="post">
+        <button class="text-xs text-[var(--text-3)] hover:text-[var(--gold)] underline">ออกจากระบบ</button>
+      </form>
+    </div>
+
+    <% messages.error.forEach(m => { %>
+      <div class="bg-[var(--coral)]/10 border border-[var(--coral)]/50 text-[var(--coral)] px-4 py-2 rounded-lg mb-3 text-sm"><%= m %></div>
+    <% }) %>
+    <% messages.success.forEach(m => { %>
+      <div class="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 px-4 py-2 rounded-lg mb-3 text-sm"><%= m %></div>
+    <% }) %>
+
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 mb-4">
+      <h2 class="font-semibold mb-3">ชื่อร้าน</h2>
+      <form action="/admin/settings" method="post" class="flex gap-2">
+        <input name="shopName" value="<%= shopName %>" placeholder="เช่น LilTeam Shop" class="flex-1 bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+        <button class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg px-4 text-sm">บันทึก</button>
+      </form>
+    </div>
+
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
+      <h2 class="font-semibold mb-3">โลโก้</h2>
+      <div class="flex items-center gap-3 mb-4">
+        <% if (logoImage) { %>
+          <img src="<%= logoImage %>" alt="โลโก้ปัจจุบัน" class="w-14 h-14 rounded-xl object-contain p-1 bg-gradient-to-br from-[var(--gold-light)] via-[var(--gold)] to-[var(--gold-dark)] border border-[var(--gold)]/50" style="mix-blend-mode: multiply;" />
+        <% } else { %>
+          <span class="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--gold-light)] to-[var(--gold-dark)] text-[var(--bg)] flex items-center justify-center text-2xl">🏪</span>
+        <% } %>
+        <span class="text-sm text-[var(--text-3)]">โลโก้ปัจจุบัน</span>
+      </div>
+      <form action="/admin/logo" method="post" enctype="multipart/form-data" class="flex flex-col sm:flex-row gap-2">
+        <input type="file" name="logo" accept="image/*" required class="flex-1 text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[var(--input)] file:text-[var(--text)] file:text-sm" />
+        <button class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg px-4 py-2 text-sm whitespace-nowrap">อัปโหลด</button>
+      </form>
+      <p class="text-xs text-[var(--text-4)] mt-2">รองรับไฟล์ภาพ ขนาดไม่เกิน 5MB</p>
+    </div>
+  </div>
+</body>
+</html>
