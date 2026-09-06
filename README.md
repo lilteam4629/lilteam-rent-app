@@ -60,14 +60,33 @@ rejected with 403 otherwise.
    `compose.yml` in this project and set `networks.main_internal.name` to
    that exact value if it isn't `community_internal`.
 
-4. **Deploy this app** (from this folder, on the VPS):
+4. **Clone this repo onto the VPS at `/opt/lilteam/rent-app`** (push it to
+   its own GitHub repo first, same as the main app), then deploy it:
    ```bash
+   git clone <your-rent-app-repo-url> /opt/lilteam/rent-app
+   cd /opt/lilteam/rent-app
    docker compose up -d --build
    ```
    It listens on `127.0.0.1:3001` (not exposed publicly by itself — same
    pattern as the main app's `127.0.0.1:3000`).
 
-5. **Point `rent.lilteam.site` at it in Nginx.** Add a new server block
+5. **Set up auto-deploy on push**, mirroring the main app's own
+   `lilteam-deploy.timer`/`.service` (git pull -> rebuild if changed, no
+   GitHub Actions or SSH keys needed — the VPS pulls, nothing pushes to
+   it):
+   ```bash
+   chmod +x /opt/lilteam/rent-app/deploy/lilteam-rent-deploy.sh
+   sudo cp /opt/lilteam/rent-app/deploy/lilteam-rent-deploy.service /etc/systemd/system/
+   sudo cp /opt/lilteam/rent-app/deploy/lilteam-rent-deploy.timer /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now lilteam-rent-deploy.timer
+   ```
+   From now on, pushing to this repo's `main` branch gets picked up and
+   redeployed within about a minute — same experience as the main app.
+   Check it's running with `systemctl status lilteam-rent-deploy.timer`
+   and `journalctl -u lilteam-rent-deploy.service -f`.
+
+6. **Point `rent.lilteam.site` at it in Nginx.** Add a new server block
    (do not touch the existing one that serves the main app):
    ```nginx
    server {
@@ -90,7 +109,7 @@ rejected with 403 otherwise.
    ```
    Reload Nginx (`nginx -t && systemctl reload nginx`).
 
-6. **Verify**: `https://rent.lilteam.site` should load the landing page
+7. **Verify**: `https://rent.lilteam.site` should load the landing page
    with real pricing plans. Register a test account, buy the cheapest
    plan, confirm the shop shows up under `/my-shops` (both here and, once
    logged into the main site as that same user, at

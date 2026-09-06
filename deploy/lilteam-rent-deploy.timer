@@ -1,0 +1,11 @@
+[Unit]
+Description=Run lilteam-rent-deploy every minute (same cadence as lilteam-deploy.timer)
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

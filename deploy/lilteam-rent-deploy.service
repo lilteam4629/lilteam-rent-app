@@ -1,0 +1,9 @@
+[Unit]
+Description=Pull and redeploy rent-app if origin/main changed
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/lilteam/rent-app
+ExecStart=/usr/bin/bash /opt/lilteam/rent-app/deploy/lilteam-rent-deploy.sh

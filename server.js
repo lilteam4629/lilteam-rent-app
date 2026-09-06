@@ -9,6 +9,8 @@ const mainApi = require('./lib/mainApi');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
@@ -111,7 +113,7 @@ app.post('/register', async (req, res) => {
   req.session.userId = result.body.user.id;
   req.session.user = result.body.user;
   req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${SHOP_NAME} Cloud`);
-  res.redirect('/start');
+  res.redirect('/');
 });
 
 app.post('/logout', (req, res) => {
