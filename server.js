@@ -5,8 +5,14 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const FormData = require('form-data');
+const bcrypt = require('bcryptjs');
 const mainApi = require('./lib/mainApi');
 const settings = require('./lib/settings');
+const cloudStore = require('./lib/cloud-store');
+const paymentService = require('./lib/payment');
+const walletService = require('./lib/wallet');
+const truemoney = require('./services/truemoney');
+const recaptcha = require('./services/recaptcha');
 const CloudSessionStore = require('./lib/session-store');
 const { safeNext, establishLogin } = require('./lib/auth');
 
@@ -47,24 +53,17 @@ app.use((req, res, next) => {
 async function requireLogin(req, res, next) {
   try {
     if (!req.session.userId && req.session.isAdmin) {
-      const linked = await mainApi.platformAdmin(ADMIN_USERNAME);
-      if (!linked.ok) return res.status(503).send('เชื่อมต่อบัญชีผู้ดูแลไม่สำเร็จ กรุณาลองใหม่');
-      req.session.userId = linked.body.user.id;
-      req.session.user = linked.body.user;
+      let linked = cloudStore.data.users.find(u => u.cloudAdmin);
+      if (!linked) { linked={id:cloudStore.id(),username:ADMIN_USERNAME||'cloud_admin',email:'',passwordHash:'',role:'customer',status:'active',walletBalance:0,cloudAdmin:true,createdAt:new Date().toISOString()};cloudStore.data.users.push(linked);cloudStore.save(); }
+      req.session.userId = linked.id; req.session.user = cloudStore.publicUser(linked);
     }
     if (!req.session.userId) {
       req.session.returnTo = safeNext(req.originalUrl, '/my-shops');
       return res.redirect('/login');
     }
-    const result = await mainApi.me(req.session.userId);
-    if (!result.ok) {
-      if ([401, 403, 404].includes(result.status)) {
-        return req.session.destroy(() => res.redirect('/login'));
-      }
-      return res.status(503).send('โหลดบัญชีไม่สำเร็จ กรุณาลองใหม่');
-    }
-    req.session.user = result.body.user;
-    res.locals.currentUser = result.body.user;
+    const user = cloudStore.user(req.session.userId);
+    if (!user) return req.session.destroy(() => res.redirect('/login'));
+    req.session.user = cloudStore.publicUser(user); res.locals.currentUser = req.session.user;
     next();
   } catch (error) { next(error); }
 }
@@ -73,10 +72,7 @@ async function requireLogin(req, res, next) {
 // cheap enough to call on every protected page since it's one small GET.
 async function refreshSessionUser(req) {
   if (!req.session.userId) return null;
-  const result = await mainApi.me(req.session.userId);
-  if (!result.ok) return req.session.user || null;
-  req.session.user = result.body.user;
-  return result.body;
+  const user=cloudStore.user(req.session.userId); if(!user)return null; req.session.user=cloudStore.publicUser(user);return req.session.user;
 }
 
 const MAIN_SITE_URL = process.env.MAIN_SITE_URL || 'https://lilteam.site';
@@ -139,9 +135,9 @@ app.post('/admin/login', async (req, res, next) => {
       req.flash('error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       return res.redirect('/admin/login');
     }
-    const result = await mainApi.platformAdmin(ADMIN_USERNAME);
-    if (!result.ok) { req.flash('error', result.body.error); return res.redirect('/admin/login'); }
-    await establishLogin(req, result.body.user, true);
+    let user=cloudStore.data.users.find(u=>u.cloudAdmin);
+    if(!user){user={id:cloudStore.id(),username:ADMIN_USERNAME,email:'',passwordHash:'',role:'customer',status:'active',walletBalance:0,cloudAdmin:true,createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();}
+    await establishLogin(req, cloudStore.publicUser(user), true);
     res.redirect('/admin');
   } catch (error) { next(error); }
 });
@@ -272,10 +268,10 @@ app.post('/admin/plans/:id/delete', requireAdmin, async (req, res) => {
 app.get('/admin/topups', requireAdmin, async (req, res) => {
   const status = ['pending', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : '';
   const q = String(req.query.q || '');
-  const result = await mainApi.adminListTopups({ status, q });
+  const requests=cloudStore.data.topups.map(t=>({...t,buyerUsername:cloudStore.data.users.find(u=>u.id===t.userId)?.username,buyerEmail:cloudStore.data.users.find(u=>u.id===t.userId)?.email})).filter(t=>(!status||t.status===status)&&(!q||JSON.stringify(t).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   res.render('admin-topups', {
     title: 'เติมเงิน/สลิป',
-    requests: result.ok ? result.body.requests : [],
+    requests,
     status,
     q,
   });
@@ -283,24 +279,22 @@ app.get('/admin/topups', requireAdmin, async (req, res) => {
 
 app.get('/admin/topups/:id/slip', requireAdmin, async (req, res) => {
   try {
-    const upstream = await mainApi.adminSlipStream(req.params.id);
-    res.setHeader('Content-Type', upstream.headers['content-type'] || 'application/octet-stream');
-    upstream.data.pipe(res);
+    const item=cloudStore.data.topups.find(t=>t.id===req.params.id);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));
   } catch {
     res.sendStatus(404);
   }
 });
 
 app.post('/admin/topups/:id/approve', requireAdmin, async (req, res) => {
-  const result = await mainApi.adminApproveTopup(req.params.id);
-  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'อนุมัติไม่สำเร็จ');
+  const result = await walletService.review(req.params.id,true);
+  if (!result.ok) req.flash('error', result.error || 'อนุมัติไม่สำเร็จ');
   else req.flash('success', 'อนุมัติคำขอเติมเงินแล้ว');
   res.redirect('/admin/topups');
 });
 
 app.post('/admin/topups/:id/reject', requireAdmin, async (req, res) => {
-  const result = await mainApi.adminRejectTopup(req.params.id, req.body.reviewNote);
-  if (!result.ok) req.flash('error', (result.body && result.body.error) || 'ปฏิเสธไม่สำเร็จ');
+  const result = await walletService.review(req.params.id,false,req.body.reviewNote);
+  if (!result.ok) req.flash('error', result.error || 'ปฏิเสธไม่สำเร็จ');
   else req.flash('success', 'ปฏิเสธคำขอแล้ว');
   res.redirect('/admin/topups');
 });
@@ -308,13 +302,22 @@ app.post('/admin/topups/:id/reject', requireAdmin, async (req, res) => {
 // ---------- Admin: users ----------
 app.get('/admin/users', requireAdmin, async (req, res) => {
   const q = String(req.query.q || '');
-  const result = await mainApi.adminListUsers({ q });
+  const users=cloudStore.data.users.filter(u=>!u.cloudAdmin&&(!q||(u.username||'').toLowerCase().includes(q.toLowerCase())||(u.email||'').toLowerCase().includes(q.toLowerCase()))).map(cloudStore.publicUser);
   res.render('admin-users', {
     title: 'บัญชีผู้ใช้',
-    users: result.ok ? result.body.users : [],
+    users,
     q,
   });
 });
+app.post('/admin/users/:id/balance',requireAdmin,async(req,res)=>{const amount=Number(req.body.amount);if(!Number.isFinite(amount)){req.flash('error','จำนวนเงินไม่ถูกต้อง');return res.redirect('/admin/users')}await cloudStore.transact(d=>{const u=d.users.find(x=>x.id===req.params.id&&!x.cloudAdmin);if(!u)throw new Error('ไม่พบสมาชิก');u.walletBalance=Math.max(0,Math.round((u.walletBalance+amount)*100)/100);d.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'admin_adjustment',amount,note:'แอดมินปรับยอดเงิน',createdAt:new Date().toISOString()})});req.flash('success','ปรับยอดเงินแล้ว');res.redirect('/admin/users')});
+app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStore.transact(d=>{const u=d.users.find(x=>x.id===req.params.id&&!x.cloudAdmin);if(u)u.status=u.status==='banned'?'active':'banned'});res.redirect('/admin/users')});
+
+app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
+app.post('/admin/payment', requireAdmin, (req,res)=>{
+  if(!paymentService.PROVIDERS.has(req.body.slipProvider)){req.flash('error','ผู้ให้บริการตรวจสลิปไม่ถูกต้อง');return res.redirect('/admin/payment')}
+  const p=cloudStore.payment();for(const key of ['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกบัญชีรับเงินและระบบตรวจสลิปแล้ว');res.redirect('/admin/payment');
+});
+app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(req.body.slipProvider,req.body)));
 
 // ---------- Landing ----------
 // Pulls a few real product image URLs straight from the live main site's
@@ -366,10 +369,12 @@ app.post('/login', async (req, res, next) => {
     const username = String(req.body.username || '').trim();
     const password = String(req.body.password || '');
     const isAdmin = !!(ADMIN_USERNAME && ADMIN_PASSWORD && username === ADMIN_USERNAME.trim() && password === ADMIN_PASSWORD);
-    const result = isAdmin ? await mainApi.platformAdmin(ADMIN_USERNAME) : await mainApi.login(username, password);
-    if (!result.ok) { req.flash('error', result.body.error || 'เข้าสู่ระบบไม่สำเร็จ'); return res.redirect('/login'); }
+    let user=cloudStore.data.users.find(u=>(u.username||'').toLowerCase()===username.toLowerCase()||(u.email||'').toLowerCase()===username.toLowerCase());
+    if(!user && !isAdmin){const legacy=await mainApi.login(username,password);if(legacy.ok){const allowed=await mainApi.legacyEligibility(legacy.body.user.id);if(allowed.ok&&allowed.body.eligible){user={...legacy.body.user,passwordHash:await bcrypt.hash(password,10),role:'customer',status:'active',migratedFromMain:true,createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();}}}
+    if(!isAdmin&&(!user||user.status==='banned'||!await bcrypt.compare(password,user.passwordHash||''))){req.flash('error','ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');return res.redirect('/login');}
+    if(isAdmin){user=cloudStore.data.users.find(u=>u.cloudAdmin)||{id:cloudStore.id(),username:ADMIN_USERNAME,email:'',passwordHash:'',role:'customer',status:'active',walletBalance:0,cloudAdmin:true,createdAt:new Date().toISOString()};if(!cloudStore.data.users.includes(user)){cloudStore.data.users.push(user);cloudStore.save();}}
     const target = safeNext(req.session.returnTo, isAdmin ? '/' : '/my-shops');
-    await establishLogin(req, result.body.user, isAdmin);
+    await establishLogin(req, cloudStore.publicUser(user), isAdmin);
     res.redirect(target);
   } catch (error) { next(error); }
 });
@@ -377,8 +382,7 @@ app.post('/login', async (req, res, next) => {
 app.get('/register', async (req, res) => {
   // Site key is public by design (embedded in the widget) — fetched from
   // the main app so both apps always show the same recaptcha config.
-  const configRes = await mainApi.config();
-  res.render('register', { title: 'สมัครสมาชิก', recaptchaSiteKey: (configRes.body && configRes.body.recaptchaSiteKey) || '' });
+  res.render('register', { title: 'สมัครสมาชิก', recaptchaSiteKey: recaptcha.siteKey() });
 });
 
 app.post('/register', async (req, res) => {
@@ -391,13 +395,11 @@ app.post('/register', async (req, res) => {
     req.flash('error', 'รหัสผ่านไม่ตรงกัน');
     return res.redirect('/register');
   }
-  const result = await mainApi.register(username, email, password, req.body['g-recaptcha-response']);
-  if (!result.ok) {
-    req.flash('error', (result.body && result.body.error) || 'สมัครสมาชิกไม่สำเร็จ');
-    return res.redirect('/register');
-  }
+  if(!await recaptcha.verify(req.body['g-recaptcha-response'],req.ip)){req.flash('error','กรุณายืนยันแคปช่า');return res.redirect('/register');}
+  if(cloudStore.data.users.some(u=>(u.username||'').toLowerCase()===username.trim().toLowerCase()||(u.email||'').toLowerCase()===email.trim().toLowerCase())){req.flash('error','ชื่อผู้ใช้หรืออีเมลถูกใช้แล้ว');return res.redirect('/register');}
+  const user={id:cloudStore.id(),username:username.trim(),email:email.trim(),passwordHash:await bcrypt.hash(password,10),role:'customer',walletBalance:0,status:'active',createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();
   const returnTo = safeNext(req.session.returnTo, '/my-shops');
-  await establishLogin(req, result.body.user, false);
+  await establishLogin(req, cloudStore.publicUser(user), false);
   req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${currentShopName()} Cloud`);
   res.redirect(returnTo);
 });
@@ -408,18 +410,22 @@ app.post('/logout', (req, res) => {
 
 // ---------- Start a shop ----------
 app.get('/start', requireLogin, async (req, res) => {
-  const [plansRes, meRes] = await Promise.all([mainApi.plans(), refreshSessionUser(req)]);
+  const plansRes = await mainApi.plans();
   res.render('start', {
     title: 'เปิดร้านของคุณเอง',
     plans: plansRes.ok ? plansRes.body.plans : [],
     preselectedPlanId: String(req.query.plan || ''),
-    recaptchaSiteKey: (meRes && meRes.recaptchaSiteKey) || '',
+    recaptchaSiteKey: recaptcha.siteKey(),
   });
 });
 
 app.post('/start', requireLogin, async (req, res) => {
+  const user=cloudStore.user(req.session.userId), plans=await mainApi.plans(), plan=plans.ok&&plans.body.plans.find(p=>p.id===req.body.planId);
+  if(!plan){req.flash('error','ไม่พบแพ็กเกจ');return res.redirect('/start');}
+  const charged=await cloudStore.transact(data=>{const u=data.users.find(x=>x.id===user.id);if(!u||u.walletBalance<plan.price)return false;u.walletBalance-=plan.price;data.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'shop_purchase',amount:-plan.price,note:`เปิดร้าน ${req.body.shopName}`,createdAt:new Date().toISOString()});return true});
+  if(!charged){req.flash('error','ยอดเครดิตไม่พอ');return res.redirect('/start');}
   const result = await mainApi.createShop({
-    userId: req.session.userId,
+    cloudUser: cloudStore.publicUser(user),
     planId: req.body.planId,
     shopName: req.body.shopName,
     adminUsername: req.body.adminUsername,
@@ -427,6 +433,7 @@ app.post('/start', requireLogin, async (req, res) => {
     recaptchaResponse: req.body['g-recaptcha-response'],
   });
   if (!result.ok) {
+    await cloudStore.transact(data=>{const u=data.users.find(x=>x.id===user.id);u.walletBalance+=plan.price;data.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'refund',amount:plan.price,note:'คืนเงินเนื่องจากเปิดร้านไม่สำเร็จ',createdAt:new Date().toISOString()})});
     req.flash('error', (result.body && result.body.error) || 'เปิดร้านไม่สำเร็จ');
     return res.redirect('/start');
   }
@@ -448,8 +455,13 @@ app.get('/my-shops', requireLogin, async (req, res) => {
 });
 
 app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
-  const result = await mainApi.renewShop(req.params.id, { userId: req.session.userId, planId: req.body.planId });
+  const user=cloudStore.user(req.session.userId),plans=await mainApi.plans(),plan=plans.ok&&plans.body.plans.find(p=>p.id===req.body.planId);
+  if(!plan){req.flash('error','ไม่พบแพ็กเกจ');return res.redirect('/my-shops');}
+  const charged=await cloudStore.transact(data=>{const u=data.users.find(x=>x.id===user.id);if(!u||u.walletBalance<plan.price)return false;u.walletBalance-=plan.price;data.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'shop_renewal',amount:-plan.price,note:`ต่ออายุร้าน ${req.params.id}`,createdAt:new Date().toISOString()});return true});
+  if(!charged){req.flash('error','ยอดเครดิตไม่พอ');return res.redirect('/my-shops');}
+  const result = await mainApi.renewShop(req.params.id, { cloudUser: cloudStore.publicUser(user), planId: req.body.planId });
   if (!result.ok) {
+    await cloudStore.transact(data=>{const u=data.users.find(x=>x.id===user.id);u.walletBalance+=plan.price;data.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'refund',amount:plan.price,note:'คืนเงินเนื่องจากต่ออายุไม่สำเร็จ',createdAt:new Date().toISOString()})});
     req.flash('error', (result.body && result.body.error) || 'ต่ออายุไม่สำเร็จ');
     return res.redirect('/my-shops');
   }
@@ -460,65 +472,48 @@ app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
 
 // ---------- Wallet / topup ----------
 app.get('/wallet', requireLogin, async (req, res) => {
-  const [topupsRes, paymentRes] = await Promise.all([mainApi.walletTopups(req.session.userId), mainApi.paymentInfo()]);
+  const payment={...cloudStore.payment(),promptpayEnabled:!['slipcheck','rdcw','slip2go'].includes(cloudStore.payment().slipProvider)};
   res.render('wallet', {
     title: 'เติมเงิน',
-    payment: paymentRes.ok ? paymentRes.body.payment : null,
-    topups: topupsRes.ok ? topupsRes.body.topups : [],
+    payment,
+    topups: walletService.list(req.session.userId),
   });
 });
 
 app.post('/account/topup/truemoney', requireLogin, async (req, res) => {
-  const result = await mainApi.redeemTruemoney(req.session.userId, req.body.voucherLink);
-  if (!result.ok) { req.flash('error', result.body.error || 'เติมเงินไม่สำเร็จ'); return res.redirect('/wallet'); }
-  await refreshSessionUser(req); req.flash('success', `🧧 เติมเงินสำเร็จ ฿${Number(result.body.amount).toLocaleString()}`);
-  res.redirect('/account/topup/' + encodeURIComponent(result.body.requestId));
+  const result = await walletService.redeem(req.session.userId, req.body.voucherLink);
+  if (!result.ok) { req.flash('error', result.error || 'เติมเงินไม่สำเร็จ'); return res.redirect('/wallet'); }
+  await refreshSessionUser(req); req.flash('success', `🧧 เติมเงินสำเร็จ ฿${Number(result.item.amount).toLocaleString()}`);
+  res.redirect('/account/topup/' + encodeURIComponent(result.item.id));
 });
 app.post('/account/topup', requireLogin, async (req, res) => {
-  const form = new FormData(); form.append('userId', req.session.userId); form.append('amount', String(req.body.amount || '')); form.append('method', req.body.method || 'bank_transfer');
-  const result = await mainApi.topup(form);
-  if (!result.ok) { req.flash('error', result.body.error || 'สร้างคำขอไม่สำเร็จ'); return res.redirect('/wallet'); }
-  res.redirect('/account/topup/' + encodeURIComponent(result.body.request.id));
+  const result = await walletService.create(req.session.userId,req.body.amount,req.body.method||'bank_transfer');
+  if (!result.ok) { req.flash('error', result.error || 'สร้างคำขอไม่สำเร็จ'); return res.redirect('/wallet'); }
+  res.redirect('/account/topup/' + encodeURIComponent(result.item.id));
 });
 app.get('/account/topup/:id', requireLogin, async (req, res) => {
-  const result = await mainApi.topupDetail(req.params.id, req.session.userId);
-  if (!result.ok) return res.status(result.status || 404).send('ไม่พบคำขอเติมเงิน');
-  res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', ...result.body, qrDataUrl: null, settings: { shopName: currentShopName(), branding: { logoImage: currentLogoImage() } } });
+  const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!request)return res.status(404).send('ไม่พบคำขอเติมเงิน');
+  res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment:cloudStore.payment(), automaticSlipCheck:cloudStore.payment().slipProvider!=='none', qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
 });
 app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (req, res) => {
   if (!req.file) { req.flash('error', 'กรุณาแนบรูปสลิป'); return res.redirect('/account/topup/' + encodeURIComponent(req.params.id)); }
-  const form = new FormData(); form.append('userId', req.session.userId); form.append('slip', req.file.buffer, { filename: req.file.originalname, contentType: req.file.mimetype });
-  const result = await mainApi.attachTopupSlip(req.params.id, form);
-  req.flash(result.ok ? 'success' : 'error', result.ok ? 'แนบสลิปแล้ว ระบบกำลังตรวจสอบ' : (result.body.error || 'แนบสลิปไม่สำเร็จ'));
+  const result = await walletService.attach(req.session.userId,req.params.id,req.file);
+  req.flash(result.ok ? 'success' : 'error', result.ok ? 'แนบสลิปแล้ว ระบบตรวจสอบเรียบร้อย' : (result.error || 'แนบสลิปไม่สำเร็จ'));
   res.redirect('/account/topup/' + encodeURIComponent(req.params.id));
 });
 app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
-  const result = await mainApi.topupDetail(req.params.id, req.session.userId);
-  res.status(result.status || 503).json(result.ok ? { status: result.body.request.status, slipCheck: result.body.request.slipCheck } : { error: 'not found' });
+  const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);res.status(request?200:404).json(request?{status:request.status,slipCheck:request.slipCheck}:{error:'not found'});
 });
 app.get('/account/topup/:id/slip-file', requireLogin, async (req, res, next) => {
-  try { const result = await mainApi.topupSlipStream(req.params.id, req.session.userId); result.data.pipe(res); }
-  catch (error) { if (error.response) return res.sendStatus(error.response.status); next(error); }
+  try {const item=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));}catch(error){next(error)}
 });
 app.get('/account', requireLogin, (req, res) => res.redirect('/my-shops'));
 
 app.post('/wallet/topup', requireLogin, upload.single('slip'), async (req, res) => {
-  const form = new FormData();
-  form.append('userId', req.session.userId);
-  form.append('amount', String(req.body.amount || ''));
-  form.append('method', req.body.method || 'promptpay');
-  if (req.file) {
-    form.append('slip', req.file.buffer, { filename: req.file.originalname, contentType: req.file.mimetype });
-  }
-  const result = await mainApi.topup(form);
-  if (!result.ok) {
-    req.flash('error', (result.body && result.body.error) || 'เติมเงินไม่สำเร็จ');
-    return res.redirect('/wallet');
-  }
-  req.flash('success', req.file
-    ? 'แนบสลิปแล้ว ระบบกำลังตรวจสอบอัตโนมัติเบื้องหลัง — รีเฟรชหน้านี้อีกครั้งในไม่กี่วินาที'
-    : 'สร้างคำขอเติมเงินแล้ว');
-  res.redirect('/wallet');
+  const created=await walletService.create(req.session.userId,req.body.amount,req.body.method||'bank_transfer');
+  if(!created.ok){req.flash('error',created.error);return res.redirect('/wallet')}
+  if(req.file)await walletService.attach(req.session.userId,created.item.id,req.file);
+  res.redirect('/account/topup/'+created.item.id);
 });
 
 app.use((req, res) => {
