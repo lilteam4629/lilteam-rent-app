@@ -96,6 +96,8 @@ app.use((req, res, next) => {
     musicEnabled: settings.get().musicEnabled === true,
     musicUrl: settings.get().musicUrl || '',
     musicVolume: Math.max(0, Math.min(100, Number(settings.get().musicVolume) || 35)),
+    musicStartSeconds: Math.max(0, Number(settings.get().musicStartSeconds) || 0),
+    musicEndSeconds: Math.max(0, Number(settings.get().musicEndSeconds) || 0),
   };
   next();
 });
@@ -137,12 +139,21 @@ app.get('/admin', requireAdmin, async (req, res) => {
 });
 
 app.post('/admin/settings', requireAdmin, (req, res) => {
+  const parseTime = (value) => String(value || '').trim().split(':').reduce((total, part) => total * 60 + (parseInt(part, 10) || 0), 0);
+  const musicStartSeconds = Math.max(0, parseTime(req.body.musicStartTime));
+  const musicEndSeconds = Math.max(0, parseTime(req.body.musicEndTime));
+  if (musicEndSeconds > 0 && musicEndSeconds <= musicStartSeconds) {
+    req.flash('error', 'เวลาจบเพลงต้องมากกว่าเวลาเริ่มเพลง');
+    return res.redirect('/admin');
+  }
   settings.update({
     shopName: (req.body.shopName || '').trim() || undefined,
     snowEnabled: req.body.snowEnabled === 'on',
     musicEnabled: req.body.musicEnabled === 'on',
     musicUrl: (req.body.musicUrl || '').trim(),
     musicVolume: Math.max(0, Math.min(100, Number(req.body.musicVolume) || 35)),
+    musicStartSeconds,
+    musicEndSeconds,
   });
   req.flash('success', 'บันทึกการตั้งค่าแล้ว');
   res.redirect('/admin');

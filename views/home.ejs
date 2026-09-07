@@ -49,7 +49,6 @@
       </nav>
       <div class="flex items-center gap-2">
         <button id="site-theme-toggle" type="button" class="effect-button" aria-label="สลับโหมดมืดสว่าง">☀️</button>
-        <% if (siteEffects.musicEnabled && siteEffects.musicUrl) { %><button id="music-toggle" type="button" class="effect-button" aria-label="เล่นหรือหยุดเพลง">🎵</button><% } %>
         <% if (isAdmin) { %>
           <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
           <form action="/admin/logout?next=/" method="post"><button class="text-[var(--text-4)] hover:text-[var(--gold)] text-sm px-2">ออกจากระบบ</button></form>
@@ -204,14 +203,12 @@
     </div>
   </footer>
 
-  <% if (siteEffects.musicEnabled && siteEffects.musicUrl) { %><audio id="site-music" src="<%= siteEffects.musicUrl %>" loop preload="none"></audio><% } %>
+  <%- include('_music-player') %>
   <script>
     (function(){
       var root=document.documentElement,theme=document.getElementById('site-theme-toggle');
       function sync(){theme.textContent=root.getAttribute('data-theme')==='light'?'🌙':'☀️'} sync();
       theme.onclick=function(){var n=root.getAttribute('data-theme')==='light'?'dark':'light';root.setAttribute('data-theme',n);try{localStorage.setItem('rentTheme',n)}catch(e){}sync()};
-      var music=document.getElementById('site-music'),musicBtn=document.getElementById('music-toggle');
-      if(music&&musicBtn){music.volume=<%= siteEffects.musicVolume %>/100;musicBtn.onclick=function(){if(music.paused){music.play().then(function(){musicBtn.textContent='⏸️'}).catch(function(){})}else{music.pause();musicBtn.textContent='🎵'}}}
       <% if (siteEffects.snowEnabled) { %>
       setInterval(function(){if(document.hidden)return;var f=document.createElement('span');f.className='snowflake';f.textContent=['❄','❅','•'][Math.floor(Math.random()*3)];f.style.left=Math.random()*100+'vw';f.style.opacity=.25+Math.random()*.55;f.style.fontSize=8+Math.random()*14+'px';f.style.setProperty('--drift',(Math.random()*100-50)+'px');f.style.animationDuration=6+Math.random()*7+'s';document.body.appendChild(f);setTimeout(function(){f.remove()},14000)},450);
       <% } %>
