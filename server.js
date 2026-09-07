@@ -84,6 +84,13 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน์ของคุณ\nใน 1 นาที';
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 
+async function importLegacyTruemoneyOnce(){
+  const p=cloudStore.payment();if(p.truemoneyImported||p.truemoneyPhone)return;
+  const result=await mainApi.legacyTruemoneyConfig();if(!result.ok)return;
+  const phone=String(result.body.truemoneyPhone||'').trim();if(!phone)return;
+  p.truemoneyEnabled=result.body.truemoneyEnabled===true;p.truemoneyPhone=phone;p.truemoneyImported=true;cloudStore.save();
+}
+
 function currentShopName() {
   return settings.get().shopName || DEFAULT_SHOP_NAME;
 }
@@ -520,5 +527,5 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'ไม่พบหน้านี้' });
 });
 
-if (require.main === module) app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`));
+if (require.main === module) importLegacyTruemoneyOnce().catch(e=>console.error('[TrueMoney import]',e.message)).finally(()=>app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`)));
 module.exports = app;
