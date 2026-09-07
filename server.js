@@ -479,7 +479,7 @@ app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
 
 // ---------- Wallet / topup ----------
 app.get('/wallet', requireLogin, async (req, res) => {
-  const payment={...cloudStore.payment(),promptpayEnabled:!['slipcheck','rdcw','slip2go'].includes(cloudStore.payment().slipProvider)};
+  const savedPayment=cloudStore.payment();const payment={...savedPayment,promptpayEnabled:Boolean(savedPayment.promptpayId)};
   res.render('wallet', {
     title: 'เติมเงิน',
     payment,
@@ -500,7 +500,7 @@ app.post('/account/topup', requireLogin, async (req, res) => {
 });
 app.get('/account/topup/:id', requireLogin, async (req, res) => {
   const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!request)return res.status(404).send('ไม่พบคำขอเติมเงิน');
-  res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment:cloudStore.payment(), automaticSlipCheck:cloudStore.payment().slipProvider!=='none', qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
+  const payment=cloudStore.payment();res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment, automaticSlipCheck:Boolean(payment.easyslipApiKey), qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
 });
 app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (req, res) => {
   if (!req.file) { req.flash('error', 'กรุณาแนบรูปสลิป'); return res.redirect('/account/topup/' + encodeURIComponent(req.params.id)); }
