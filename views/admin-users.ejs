@@ -10,8 +10,8 @@
   <%- include('_head-style') %>
   <%- include('_theme-init') %>
 </head>
-<body class="min-h-screen p-4 sm:p-8">
-  <div class="max-w-2xl mx-auto">
+<body class="admin-page">
+  <div class="admin-content">
     <%- include('_admin-nav', { active: 'users' }) %>
 
     <% messages.error.forEach(m => { %>

@@ -10,8 +10,8 @@
   <%- include('_head-style') %>
   <%- include('_theme-init') %>
 </head>
-<body class="min-h-screen p-4 sm:p-8">
-  <div class="max-w-lg mx-auto">
+<body class="admin-page">
+  <div class="admin-content">
     <%- include('_admin-nav', { active: 'branding' }) %>
 
     <% messages.error.forEach(m => { %>
@@ -21,12 +21,22 @@
       <div class="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 px-4 py-2 rounded-lg mb-3 text-sm"><%= m %></div>
     <% }) %>
 
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 mb-4">
-      <h2 class="font-semibold mb-3">ชื่อร้าน</h2>
-      <form action="/admin/settings" method="post" class="flex gap-2">
-        <input name="shopName" value="<%= shopName %>" placeholder="เช่น LilTeam Shop" class="flex-1 bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
-        <button class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg px-4 text-sm">บันทึก</button>
-      </form>
+    <div class="grid lg:grid-cols-3 gap-4 mb-4">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 lg:col-span-2">
+        <p class="text-xs text-[var(--gold)] font-semibold mb-1">ตั้งค่าหน้าหลัก</p>
+        <h2 class="text-xl font-bold mb-4">แบรนด์และบรรยากาศเว็บไซต์</h2>
+        <form action="/admin/settings" method="post" class="space-y-4">
+          <div><label class="text-xs text-[var(--text-3)] block mb-1">ชื่อเว็บไซต์</label><input name="shopName" value="<%= shopName %>" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-xl px-3 py-2.5 text-sm" /></div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="flex items-center justify-between gap-3 bg-[var(--input)] border border-[var(--border-light)] rounded-xl p-4"><span><b class="block text-sm">❄️ หิมะบนหน้าหลัก</b><small class="text-[var(--text-4)]">เอฟเฟกต์หิมะตกแบบนุ่มนวล</small></span><input type="checkbox" name="snowEnabled" <%= siteEffects.snowEnabled ? 'checked' : '' %> class="w-5 h-5 accent-[var(--gold)]" /></label>
+            <label class="flex items-center justify-between gap-3 bg-[var(--input)] border border-[var(--border-light)] rounded-xl p-4"><span><b class="block text-sm">🎵 เพลงบนหน้าหลัก</b><small class="text-[var(--text-4)]">ผู้ชมกดเล่นหรือหยุดเอง</small></span><input type="checkbox" name="musicEnabled" <%= siteEffects.musicEnabled ? 'checked' : '' %> class="w-5 h-5 accent-[var(--gold)]" /></label>
+          </div>
+          <div><label class="text-xs text-[var(--text-3)] block mb-1">ลิงก์ไฟล์เพลง MP3</label><input name="musicUrl" type="url" value="<%= siteEffects.musicUrl %>" placeholder="https://.../music.mp3" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-xl px-3 py-2.5 text-sm" /></div>
+          <div><label class="text-xs text-[var(--text-3)] block mb-1">ระดับเสียง <%= siteEffects.musicVolume %>%</label><input name="musicVolume" type="range" min="0" max="100" value="<%= siteEffects.musicVolume %>" class="w-full accent-[var(--gold)]" /></div>
+          <button class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-xl px-5 py-2.5 text-sm">บันทึกการตั้งค่า</button>
+        </form>
+      </div>
+      <div class="bg-gradient-to-br from-[var(--gold)]/20 to-[var(--card)] border border-[var(--gold)]/30 rounded-2xl p-6"><span class="text-3xl">✨</span><h3 class="font-bold mt-3">ปรับหน้าเว็บได้ทันที</h3><p class="text-sm text-[var(--text-3)] mt-2">การตั้งค่าจะถูกเก็บใน volume และไม่หายเมื่อระบบ deploy เวอร์ชันใหม่</p></div>
     </div>
 
     <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">

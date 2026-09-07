@@ -15,7 +15,8 @@
       --text:#f3ecd8; --text-2:#d6c9a0; --text-3:#a89a6c; --text-4:#7a6f47;
       --gold:#c8a63f; --gold-hover:#dbb94d; --gold-light:#e8d48a; --gold-dark:#8a6f28;
     }
-    body{font-family:'Kanit',sans-serif;background:var(--bg);color:var(--text);}
+    :root[data-theme="light"]{--bg:#faf7ee;--card:#fff;--border:#e6dcc0;--border-light:#ddcfaa;--input:#f3ecd9;--text:#28220f;--text-2:#4b4021;--text-3:#76683f;--text-4:#9d8e64;--gold:#a98428;--gold-hover:#8f6d1c;--gold-light:#caa94c;--gold-dark:#725613}
+    body{font-family:'Kanit',sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s;}
     .grad-text{background:linear-gradient(135deg,var(--gold-light),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
     .hero-glow{background:radial-gradient(ellipse 60% 50% at 50% 0%,color-mix(in srgb,var(--gold) 18%,transparent),transparent)}
     .badge{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--text-3)}
@@ -24,7 +25,10 @@
     .plan-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--gold) 55%,var(--border-light))}
     .plan-card.is-popular{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 20px 40px -20px color-mix(in srgb,var(--gold) 60%,transparent)}
     .popular-badge{position:absolute;top:-.7rem;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--bg);font-size:.65rem;font-weight:800;padding:.25rem .8rem;border-radius:999px;white-space:nowrap}
+    .effect-button{width:2.55rem;height:2.55rem;border-radius:.8rem;border:1px solid var(--border-light);background:var(--input);display:grid;place-items:center;transition:.2s}.effect-button:hover{border-color:var(--gold);transform:translateY(-1px)}
+    .snowflake{position:fixed;top:-2rem;z-index:50;color:#fff;pointer-events:none;text-shadow:0 0 6px #8bd5ff;animation:snow-fall linear forwards}@keyframes snow-fall{to{transform:translate3d(var(--drift),105vh,0) rotate(360deg);opacity:.1}}
   </style>
+  <script>(function(){try{var t=localStorage.getItem('rentTheme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();</script>
 </head>
 <body class="min-h-screen">
 
@@ -44,6 +48,8 @@
         <a href="#packages" class="hover:text-[var(--gold)] transition-colors">แพ็กเกจ</a>
       </nav>
       <div class="flex items-center gap-2">
+        <button id="site-theme-toggle" type="button" class="effect-button" aria-label="สลับโหมดมืดสว่าง">☀️</button>
+        <% if (siteEffects.musicEnabled && siteEffects.musicUrl) { %><button id="music-toggle" type="button" class="effect-button" aria-label="เล่นหรือหยุดเพลง">🎵</button><% } %>
         <% if (isAdmin) { %>
           <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้าน</a>
         <% } %>
@@ -197,6 +203,20 @@
       <a href="/login" class="hover:text-[var(--gold)] transition-colors">เข้าสู่ระบบ →</a>
     </div>
   </footer>
+
+  <% if (siteEffects.musicEnabled && siteEffects.musicUrl) { %><audio id="site-music" src="<%= siteEffects.musicUrl %>" loop preload="none"></audio><% } %>
+  <script>
+    (function(){
+      var root=document.documentElement,theme=document.getElementById('site-theme-toggle');
+      function sync(){theme.textContent=root.getAttribute('data-theme')==='light'?'🌙':'☀️'} sync();
+      theme.onclick=function(){var n=root.getAttribute('data-theme')==='light'?'dark':'light';root.setAttribute('data-theme',n);try{localStorage.setItem('rentTheme',n)}catch(e){}sync()};
+      var music=document.getElementById('site-music'),musicBtn=document.getElementById('music-toggle');
+      if(music&&musicBtn){music.volume=<%= siteEffects.musicVolume %>/100;musicBtn.onclick=function(){if(music.paused){music.play().then(function(){musicBtn.textContent='⏸️'}).catch(function(){})}else{music.pause();musicBtn.textContent='🎵'}}}
+      <% if (siteEffects.snowEnabled) { %>
+      setInterval(function(){if(document.hidden)return;var f=document.createElement('span');f.className='snowflake';f.textContent=['❄','❅','•'][Math.floor(Math.random()*3)];f.style.left=Math.random()*100+'vw';f.style.opacity=.25+Math.random()*.55;f.style.fontSize=8+Math.random()*14+'px';f.style.setProperty('--drift',(Math.random()*100-50)+'px');f.style.animationDuration=6+Math.random()*7+'s';document.body.appendChild(f);setTimeout(function(){f.remove()},14000)},450);
+      <% } %>
+    })();
+  </script>
 
 </body>
 </html>

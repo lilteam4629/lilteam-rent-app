@@ -1,36 +1,24 @@
-<div class="border-b border-[var(--border)] mb-6 pb-4">
-  <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
-    <div>
-      <h1 class="text-xl font-bold">จัดการเว็บเช่าร้าน</h1>
-      <p class="text-sm text-[var(--text-3)]">แผงควบคุมสำหรับแอดมิน</p>
-    </div>
-    <div class="flex items-center gap-3">
-      <button id="admin-theme-toggle" type="button" class="text-xs border border-[var(--border-light)] rounded-lg px-3 py-1.5 hover:border-[var(--gold)] transition-colors">🌗 สลับธีม</button>
-      <form action="/admin/logout" method="post">
-        <button class="text-xs text-[var(--text-3)] hover:text-[var(--gold)] underline">ออกจากระบบ</button>
-      </form>
-    </div>
+<% const navItems = [
+  { key: 'branding', href: '/admin', icon: '▦', label: 'ภาพรวมและหน้าเว็บ' },
+  { key: 'plans', href: '/admin/plans', icon: '▣', label: 'แพ็กเกจราคา' },
+  { key: 'topups', href: '/admin/topups', icon: '▤', label: 'เติมเงินและตรวจสลิป' },
+  { key: 'users', href: '/admin/users', icon: '♙', label: 'บัญชีผู้ใช้' },
+]; %>
+<aside class="admin-sidebar">
+  <div class="h-[5.4rem] px-5 flex items-center gap-3 border-b border-[var(--border)]">
+    <% if (logoImage) { %><img src="<%= logoImage %>" class="w-10 h-10 rounded-xl object-contain bg-[var(--input)]" /><% } else { %><span class="w-10 h-10 rounded-xl bg-[var(--gold)] text-[var(--bg)] grid place-items-center">🏪</span><% } %>
+    <div><div class="font-bold leading-tight"><%= shopName %> Cloud</div><div class="text-[11px] text-[var(--gold)]">ผู้ดูแลระบบ</div></div>
   </div>
-  <nav class="flex flex-wrap gap-2 text-sm">
-    <% const navItems = [
-      { key: 'branding', href: '/admin', label: 'แบรนด์' },
-      { key: 'plans', href: '/admin/plans', label: 'แพ็กเกจราคา' },
-      { key: 'topups', href: '/admin/topups', label: 'เติมเงิน/สลิป' },
-      { key: 'users', href: '/admin/users', label: 'บัญชีผู้ใช้' },
-    ]; %>
-    <% navItems.forEach(function (item) { %>
-      <a href="<%= item.href %>" class="px-3 py-1.5 rounded-lg font-medium transition-colors <%= active === item.key ? 'bg-[var(--gold)] text-[var(--bg)]' : 'bg-[var(--input)] text-[var(--text-3)] hover:text-[var(--gold)]' %>"><%= item.label %></a>
-    <% }) %>
+  <nav class="p-3 space-y-1 flex-1">
+    <p class="px-3 pt-2 pb-1 text-[10px] font-bold tracking-widest text-[var(--text-4)]">จัดการระบบ</p>
+    <% navItems.forEach(function(item) { %><a href="<%= item.href %>" class="admin-nav-link <%= active === item.key ? 'active' : '' %>"><span class="text-lg"><%= item.icon %></span><%= item.label %></a><% }) %>
+    <p class="px-3 pt-5 pb-1 text-[10px] font-bold tracking-widest text-[var(--text-4)]">เว็บไซต์</p>
+    <a href="/" class="admin-nav-link"><span class="text-lg">⌂</span>ดูหน้าหลัก</a>
   </nav>
-</div>
-<script>
-  (function () {
-    var btn = document.getElementById('admin-theme-toggle');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', next);
-      try { localStorage.setItem('rentAdminTheme', next); } catch (e) {}
-    });
-  })();
-</script>
+  <form action="/admin/logout" method="post" class="p-4 border-t border-[var(--border)]"><button class="admin-nav-link w-full"><span>↪</span>ออกจากระบบ</button></form>
+</aside>
+<header class="admin-topbar">
+  <div><p class="text-[11px] text-[var(--text-4)]">หลังบ้าน /</p><strong><%= (navItems.find(function(x){ return x.key === active; }) || {}).label || 'แดชบอร์ด' %></strong></div>
+  <button id="admin-theme-toggle" type="button" class="border border-[var(--border-light)] bg-[var(--input)] rounded-xl px-4 py-2 text-sm hover:border-[var(--gold)]">☀️ สลับมืด/สว่าง</button>
+</header>
+<script>(function(){var b=document.getElementById('admin-theme-toggle');if(!b)return;b.onclick=function(){var n=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('rentTheme',n)}catch(e){}}})();</script>

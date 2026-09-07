@@ -91,6 +91,12 @@ app.use((req, res, next) => {
   res.locals.heroTitle = currentHeroTitle();
   res.locals.heroSubtitle = currentHeroSubtitle();
   res.locals.heroCustomized = isHeroTitleCustomized();
+  res.locals.siteEffects = {
+    snowEnabled: settings.get().snowEnabled === true,
+    musicEnabled: settings.get().musicEnabled === true,
+    musicUrl: settings.get().musicUrl || '',
+    musicVolume: Math.max(0, Math.min(100, Number(settings.get().musicVolume) || 35)),
+  };
   next();
 });
 
@@ -131,7 +137,13 @@ app.get('/admin', requireAdmin, async (req, res) => {
 });
 
 app.post('/admin/settings', requireAdmin, (req, res) => {
-  settings.update({ shopName: (req.body.shopName || '').trim() || undefined });
+  settings.update({
+    shopName: (req.body.shopName || '').trim() || undefined,
+    snowEnabled: req.body.snowEnabled === 'on',
+    musicEnabled: req.body.musicEnabled === 'on',
+    musicUrl: (req.body.musicUrl || '').trim(),
+    musicVolume: Math.max(0, Math.min(100, Number(req.body.musicVolume) || 35)),
+  });
   req.flash('success', 'บันทึกการตั้งค่าแล้ว');
   res.redirect('/admin');
 });

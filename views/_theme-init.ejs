@@ -1,7 +1,7 @@
 <script>
 (function () {
   try {
-    var saved = localStorage.getItem('rentAdminTheme');
+    var saved = localStorage.getItem('rentTheme') || localStorage.getItem('rentAdminTheme');
     if (saved) document.documentElement.setAttribute('data-theme', saved);
   } catch (e) {}
 })();
