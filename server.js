@@ -331,14 +331,19 @@ app.get('/', async (req, res) => {
 app.get('/login', (req, res) => res.render('login', { title: 'เข้าสู่ระบบ' }));
 
 app.post('/login', async (req, res) => {
-  if (ADMIN_USERNAME && ADMIN_PASSWORD && req.body.username === ADMIN_USERNAME && req.body.password === ADMIN_PASSWORD) {
+  const loginUsername = String(req.body.username || '').trim();
+  const loginPassword = String(req.body.password || '');
+  if (ADMIN_USERNAME && ADMIN_PASSWORD && loginUsername === ADMIN_USERNAME.trim() && loginPassword === ADMIN_PASSWORD) {
     req.session.isAdmin = true;
     delete req.session.userId;
     delete req.session.user;
     req.flash('success', `ยินดีต้อนรับผู้ดูแล ${ADMIN_USERNAME}`);
-    return res.redirect('/');
+    return req.session.save((error) => {
+      if (error) return res.status(500).send('ไม่สามารถบันทึกสถานะเข้าสู่ระบบได้');
+      res.redirect('/');
+    });
   }
-  const result = await mainApi.login(req.body.username, req.body.password);
+  const result = await mainApi.login(loginUsername, loginPassword);
   if (!result.ok) {
     req.flash('error', (result.body && result.body.error) || 'เข้าสู่ระบบไม่สำเร็จ');
     return res.redirect('/login');
