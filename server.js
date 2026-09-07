@@ -518,7 +518,7 @@ app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
 app.get('/account/topup/:id/slip-file', requireLogin, async (req, res, next) => {
   try {const item=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));}catch(error){next(error)}
 });
-app.get('/account', requireLogin, (req, res) => res.redirect('/my-shops'));
+app.get('/account', requireLogin, (req, res) => res.redirect('/'));
 
 app.post('/wallet/topup', requireLogin, upload.single('slip'), async (req, res) => {
   const created=await walletService.create(req.session.userId,req.body.amount,req.body.method||'bank_transfer');
