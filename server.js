@@ -85,14 +85,14 @@ const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน�
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 
 async function importLegacyPaymentOnce(){
-  const p=cloudStore.payment();if(p.legacyPaymentImported)return;
+  const p=cloudStore.payment();if(Number(p.legacyPaymentImportVersion||0)>=2)return;
   const result=await mainApi.legacyPaymentConfig();if(!result.ok||!result.body.payment)return;
-  const allowed=['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
+  const allowed=['slipProvider','byshopApiKey','byshopEndpoint','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
   for(const key of allowed)p[key]=result.body.payment[key]||'';
   if(!paymentService.PROVIDERS.has(p.slipProvider)||p.slipProvider==='none'){
-    if(p.easyslipApiKey)p.slipProvider='easyslip';else if(p.slipokBranchId&&p.slipokApiKey)p.slipProvider='slipok';else if(p.slipcheckApiKey)p.slipProvider='slipcheck';else if(p.rdcwClientId&&p.rdcwClientSecret)p.slipProvider='rdcw';else if(p.slip2goApiKey)p.slipProvider='slip2go';else p.slipProvider='none';
+    if(p.byshopApiKey)p.slipProvider='byshop';else if(p.easyslipApiKey)p.slipProvider='easyslip';else if(p.slipokBranchId&&p.slipokApiKey)p.slipProvider='slipok';else if(p.slipcheckApiKey)p.slipProvider='slipcheck';else if(p.rdcwClientId&&p.rdcwClientSecret)p.slipProvider='rdcw';else if(p.slip2goApiKey)p.slipProvider='slip2go';else p.slipProvider='none';
   }
-  p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;cloudStore.save();
+  p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;p.legacyPaymentImportVersion=2;cloudStore.save();
 }
 
 function currentShopName() {
@@ -326,7 +326,7 @@ app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStor
 app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
 app.post('/admin/payment', requireAdmin, (req,res)=>{
   if(!paymentService.PROVIDERS.has(req.body.slipProvider)){req.flash('error','ผู้ให้บริการตรวจสลิปไม่ถูกต้อง');return res.redirect('/admin/payment')}
-  const p=cloudStore.payment();for(const key of ['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกบัญชีรับเงินและระบบตรวจสลิปแล้ว');res.redirect('/admin/payment');
+  const p=cloudStore.payment();for(const key of ['slipProvider','byshopApiKey','byshopEndpoint','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกบัญชีรับเงินและระบบตรวจสลิปแล้ว');res.redirect('/admin/payment');
 });
 app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(req.body.slipProvider,req.body)));
 

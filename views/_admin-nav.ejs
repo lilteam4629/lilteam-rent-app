@@ -2,8 +2,8 @@
   { key: 'branding', href: '/admin', icon: '▦', label: 'ภาพรวมและหน้าเว็บ' },
   { key: 'rentals', href: '/admin/rentals', icon: '🏪', label: 'ร้านเช่าและประวัติ' },
   { key: 'plans', href: '/admin/plans', icon: '▣', label: 'แพ็กเกจราคา' },
-  { key: 'topups', href: '/admin/topups', icon: '▤', label: 'เติมเงินและตรวจสลิป' },
-  { key: 'payment', href: '/admin/payment', icon: '⚙', label: 'บัญชีรับเงิน / API สลิป' },
+  { key: 'topups', href: '/admin/topups', icon: '▤', label: 'เติมเงิน & ตรวจสลิป' },
+  { key: 'payment', href: '/admin/payment', icon: '✓', label: 'ตั้งค่าตรวจสลิปอัตโนมัติ', badge: 'BYSHOP / Multi-API' },
   { key: 'users', href: '/admin/users', icon: '♙', label: 'บัญชีผู้ใช้' },
 ]; %>
 <aside class="admin-sidebar">
@@ -13,7 +13,7 @@
   </div>
   <nav class="p-3 space-y-1 flex-1">
     <p class="px-3 pt-2 pb-1 text-[10px] font-bold tracking-widest text-[var(--text-4)]">จัดการระบบ</p>
-    <% navItems.forEach(function(item) { %><a href="<%= item.href %>" class="admin-nav-link <%= active === item.key ? 'active' : '' %>"><span class="text-lg"><%= item.icon %></span><%= item.label %></a><% }) %>
+    <% navItems.forEach(function(item) { %><a href="<%= item.href %>" class="admin-nav-link <%= active === item.key ? 'active' : '' %>"><span class="text-lg"><%= item.icon %></span><span><%= item.label %><% if(item.badge){ %><small class="block text-[9px] text-emerald-400"><%= item.badge %></small><% } %></span></a><% }) %>
     <p class="px-3 pt-5 pb-1 text-[10px] font-bold tracking-widest text-[var(--text-4)]">เว็บไซต์</p>
     <a href="/" class="admin-nav-link"><span class="text-lg">⌂</span>ดูหน้าหลัก</a>
   </nav>
