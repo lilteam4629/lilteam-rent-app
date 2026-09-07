@@ -125,7 +125,7 @@ app.post('/admin/login', (req, res) => {
 
 app.post('/admin/logout', (req, res) => {
   req.session.isAdmin = false;
-  res.redirect('/admin/login');
+  res.redirect(req.query.next === '/' ? '/' : '/admin/login');
 });
 
 app.get('/admin', requireAdmin, async (req, res) => {
@@ -331,6 +331,13 @@ app.get('/', async (req, res) => {
 app.get('/login', (req, res) => res.render('login', { title: 'เข้าสู่ระบบ' }));
 
 app.post('/login', async (req, res) => {
+  if (ADMIN_USERNAME && ADMIN_PASSWORD && req.body.username === ADMIN_USERNAME && req.body.password === ADMIN_PASSWORD) {
+    req.session.isAdmin = true;
+    delete req.session.userId;
+    delete req.session.user;
+    req.flash('success', `ยินดีต้อนรับผู้ดูแล ${ADMIN_USERNAME}`);
+    return res.redirect('/');
+  }
   const result = await mainApi.login(req.body.username, req.body.password);
   if (!result.ok) {
     req.flash('error', (result.body && result.body.error) || 'เข้าสู่ระบบไม่สำเร็จ');
@@ -338,6 +345,7 @@ app.post('/login', async (req, res) => {
   }
   req.session.userId = result.body.user.id;
   req.session.user = result.body.user;
+  req.session.isAdmin = false;
   req.flash('success', `ยินดีต้อนรับ ${result.body.user.username}`);
   res.redirect(req.query.next && req.query.next.startsWith('/') ? req.query.next : '/my-shops');
 });

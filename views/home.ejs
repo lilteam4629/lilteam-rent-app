@@ -52,8 +52,8 @@
         <% if (siteEffects.musicEnabled && siteEffects.musicUrl) { %><button id="music-toggle" type="button" class="effect-button" aria-label="เล่นหรือหยุดเพลง">🎵</button><% } %>
         <% if (isAdmin) { %>
           <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
-        <% } %>
-        <% if (currentUser) { %>
+          <form action="/admin/logout?next=/" method="post"><button class="text-[var(--text-4)] hover:text-[var(--gold)] text-sm px-2">ออกจากระบบ</button></form>
+        <% } else if (currentUser) { %>
           <a href="/wallet" class="hidden sm:inline-block border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">เติมเงิน</a>
           <a href="/my-shops" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm">จัดการร้านของฉัน</a>
         <% } else { %>
