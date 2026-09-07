@@ -9,6 +9,7 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY lib ./lib
 COPY services ./services
 COPY views ./views
+COPY public ./public
 COPY server.js ./
 
 EXPOSE 3000
