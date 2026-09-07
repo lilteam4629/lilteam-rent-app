@@ -109,7 +109,7 @@
       <h2 class="text-2xl sm:text-3xl font-bold">ไม่ใช่แค่โมเดล — นี่คือร้านค้าจริงที่ใช้ระบบนี้อยู่</h2>
       <p class="text-[var(--text-3)] mt-2"><%= shopName %> คือร้านของเราเองที่เปิดขายจริงบนระบบเดียวกันนี้ทุกวัน ลองเข้าไปดูของจริงได้เลย ไม่ใช่ภาพตัวอย่างปลอม</p>
     </div>
-    <a href="<%= mainSiteUrl %>" target="_blank" rel="noopener" class="block group max-w-2xl mx-auto">
+    <a href="<%= mainSiteUrl %>" target="_blank" rel="noopener" class="block group max-w-5xl mx-auto">
       <div class="rounded-2xl border border-[var(--border-light)] overflow-hidden shadow-2xl transition-transform group-hover:-translate-y-1">
         <div class="flex items-center gap-2 bg-[var(--input)] px-4 py-2.5 border-b border-[var(--border-light)]">
           <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
@@ -117,27 +117,9 @@
           <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
           <span class="ml-3 text-xs text-[var(--text-4)] bg-[var(--bg)] rounded-full px-3 py-1 truncate">🔒 <%= mainDomain %></span>
         </div>
-        <div class="relative bg-[var(--card)] overflow-hidden" style="aspect-ratio: 16/10;">
-          <% if (showcaseImages && showcaseImages.length) { %>
-            <div class="grid h-full" style="grid-template-columns: repeat(<%= showcaseImages.length %>, 1fr);">
-              <% showcaseImages.forEach(function(img) { %>
-                <img src="<%= img %>" alt="" class="w-full h-full object-cover" loading="lazy" />
-              <% }); %>
-            </div>
-          <% } else { %>
-            <div class="w-full h-full flex items-center justify-center text-4xl">🏪</div>
-          <% } %>
-          <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[var(--card)] via-[var(--card)]/90 to-transparent px-5 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <% if (logoImage) { %>
-                <img src="<%= logoImage %>" alt="" class="w-8 h-8 rounded-lg object-contain p-0.5 bg-gradient-to-br from-[var(--gold-light)] via-[var(--gold)] to-[var(--gold-dark)] border border-[var(--gold)]/50" style="mix-blend-mode: multiply;" />
-              <% } else { %>
-                <span class="text-2xl">🏪</span>
-              <% } %>
-              <span class="font-bold"><%= shopName %></span>
-            </div>
-            <span class="text-sm text-[var(--gold)] group-hover:underline whitespace-nowrap">เปิดดูร้านค้าจริง ↗</span>
-          </div>
+        <div class="relative bg-white overflow-hidden" style="aspect-ratio: 2/1;">
+          <iframe src="<%= mainSiteUrl %>" title="ตัวอย่าง <%= shopName %>" loading="lazy" tabindex="-1" aria-hidden="true" class="absolute inset-0 border-0 pointer-events-none" style="width:200%;height:200%;transform:scale(.5);transform-origin:top left"></iframe>
+          <span class="absolute right-3 bottom-3 text-xs bg-black/70 text-white rounded-full px-3 py-1.5 opacity-0 group-hover:opacity-100 transition">เปิดดูร้านค้าจริง ↗</span>
         </div>
       </div>
     </a>
