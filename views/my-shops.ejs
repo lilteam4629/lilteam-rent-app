@@ -45,6 +45,7 @@
               </div>
               <span class="countdown text-xs font-mono px-2 py-1 rounded-full border border-[var(--border-light)]" data-exp="<%= shop.expiresAt %>">…</span>
             </div>
+            <a href="<%= shop.url.replace(/\/$/, '') %>/admin" target="_blank" class="inline-flex mb-3 px-3 py-2 rounded-lg border border-[var(--gold)] text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] text-sm font-medium transition-colors">🛠️ เข้าหลังบ้านร้าน</a>
             <form action="/my-shops/<%= shop.id %>/renew" method="post" class="flex gap-2">
               <select name="planId" required class="flex-1 min-w-0 bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2 text-sm">
                 <% plans.forEach(plan => { %><option value="<%= plan.id %>"><%= plan.days %> วัน — ฿<%= plan.price.toLocaleString() %></option><% }) %>
