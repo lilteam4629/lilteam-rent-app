@@ -321,10 +321,11 @@ app.post('/admin/users/:id/balance',requireAdmin,async(req,res)=>{const amount=N
 app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStore.transact(d=>{const u=d.users.find(x=>x.id===req.params.id&&!x.cloudAdmin);if(u)u.status=u.status==='banned'?'active':'banned'});res.redirect('/admin/users')});
 
 app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
+function selectedPaymentProvider(body={}){const value=String(Array.isArray(body.slipProvider)?body.slipProvider.at(-1):body.slipProvider||'').trim().toLowerCase();if(paymentService.PROVIDERS.has(value))return value;if(body.rdcwClientId||body.rdcwClientSecret)return'rdcw';if(body.slipokBranchId||body.slipokApiKey)return'slipok';if(body.slipcheckApiKey)return'slipcheck';if(body.slip2goApiKey)return'slip2go';return'easyslip'}
 app.post('/admin/payment', requireAdmin, (req,res)=>{
-  const provider=String(req.body.slipProvider||'').trim().toLowerCase();if(!paymentService.PROVIDERS.has(provider)){req.flash('error','ผู้ให้บริการไม่ถูกต้อง');return res.redirect('/admin/payment')}const p=cloudStore.payment();for(const key of ['easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.slipProvider=provider;p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกระบบตรวจสลิปและบัญชีรับเงินแล้ว');res.redirect('/admin/payment');
+  const provider=selectedPaymentProvider(req.body);const p=cloudStore.payment();for(const key of ['easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.slipProvider=provider;p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกระบบตรวจสลิปและบัญชีรับเงินแล้ว');res.redirect('/admin/payment');
 });
-app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(req.body.slipProvider,req.body)));
+app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(selectedPaymentProvider(req.body),req.body)));
 
 // ---------- Landing ----------
 // Pulls a few real product image URLs straight from the live main site's
