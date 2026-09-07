@@ -26,6 +26,14 @@
     <% messages.error.forEach(m => { %><div class="bg-[var(--coral)]/10 border border-[var(--coral)]/50 text-[var(--coral)] px-4 py-2 rounded-lg mb-3 text-sm text-center"><%= m %></div><% }) %>
     <% messages.success.forEach(m => { %><div class="bg-emerald-500/10 border border-emerald-500/40 text-emerald-400 px-4 py-2 rounded-lg mb-3 text-sm text-center"><%= m %></div><% }) %>
 
+    <% if (payment) { %>
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 mb-4 space-y-2">
+      <h2 class="font-semibold">บัญชีรับเงิน</h2>
+      <% if (payment.promptpayId) { %><p>พร้อมเพย์: <b><%= payment.promptpayId %></b></p><% } %>
+      <% if (payment.bankAccount) { %><p><%= payment.bankName %> · <b><%= payment.bankAccount %></b> · <%= payment.bankAccountName %></p><% } %>
+      <p class="text-xs text-[var(--text-3)]">ใช้ยอดเงินร่วมกับบัญชีเว็บร้านค้าเดิม</p>
+    </div>
+    <% } %>
     <form action="/wallet/topup" method="post" enctype="multipart/form-data" class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-3 mb-8">
       <div>
         <label class="block text-xs mb-1 text-[var(--text-3)]">จำนวนเงิน (บาท)</label>

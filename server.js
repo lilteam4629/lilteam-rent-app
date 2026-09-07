@@ -7,6 +7,8 @@ const multer = require('multer');
 const FormData = require('form-data');
 const mainApi = require('./lib/mainApi');
 const settings = require('./lib/settings');
+const CloudSessionStore = require('./lib/session-store');
+const { safeNext, establishLogin } = require('./lib/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +26,8 @@ app.use('/uploads', express.static(settings.UPLOADS_DIR));
 // A simple in-memory session store is enough; there's nothing here that
 // needs to survive a restart beyond "please log in again".
 app.use(session({
+  name: 'cloud.sid',
+  store: new CloudSessionStore(path.join(settings.DATA_DIR, 'sessions')),
   secret: process.env.SESSION_SECRET || 'rent-app-dev-secret',
   resave: false,
   saveUninitialized: false,
@@ -40,12 +44,29 @@ app.use((req, res, next) => {
   next();
 });
 
-function requireLogin(req, res, next) {
-  if (!req.session.userId) {
-    req.flash('error', 'กรุณาเข้าสู่ระบบก่อน');
-    return res.redirect('/login');
-  }
-  next();
+async function requireLogin(req, res, next) {
+  try {
+    if (!req.session.userId && req.session.isAdmin) {
+      const linked = await mainApi.platformAdmin(ADMIN_USERNAME);
+      if (!linked.ok) return res.status(503).send('เชื่อมต่อบัญชีผู้ดูแลไม่สำเร็จ กรุณาลองใหม่');
+      req.session.userId = linked.body.user.id;
+      req.session.user = linked.body.user;
+    }
+    if (!req.session.userId) {
+      req.session.returnTo = safeNext(req.originalUrl, '/my-shops');
+      return res.redirect('/login');
+    }
+    const result = await mainApi.me(req.session.userId);
+    if (!result.ok) {
+      if ([401, 403, 404].includes(result.status)) {
+        return req.session.destroy(() => res.redirect('/login'));
+      }
+      return res.status(503).send('โหลดบัญชีไม่สำเร็จ กรุณาลองใหม่');
+    }
+    req.session.user = result.body.user;
+    res.locals.currentUser = result.body.user;
+    next();
+  } catch (error) { next(error); }
 }
 
 // Keeps req.session.user (wallet balance especially) reasonably fresh —
@@ -112,23 +133,19 @@ function requireAdmin(req, res, next) {
 
 app.get('/admin/login', (req, res) => res.render('admin-login', { title: 'เข้าสู่ระบบผู้ดูแล' }));
 
-app.post('/admin/login', (req, res) => {
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-    req.flash('error', 'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า ADMIN_USERNAME/ADMIN_PASSWORD');
-    return res.redirect('/admin/login');
-  }
-  if (req.body.username !== ADMIN_USERNAME || req.body.password !== ADMIN_PASSWORD) {
-    req.flash('error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-    return res.redirect('/admin/login');
-  }
-  req.session.isAdmin = true;
-  res.redirect('/admin');
+app.post('/admin/login', async (req, res, next) => {
+  try {
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || req.body.username !== ADMIN_USERNAME || req.body.password !== ADMIN_PASSWORD) {
+      req.flash('error', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      return res.redirect('/admin/login');
+    }
+    const result = await mainApi.platformAdmin(ADMIN_USERNAME);
+    if (!result.ok) { req.flash('error', result.body.error); return res.redirect('/admin/login'); }
+    await establishLogin(req, result.body.user, true);
+    res.redirect('/admin');
+  } catch (error) { next(error); }
 });
-
-app.post('/admin/logout', (req, res) => {
-  req.session.isAdmin = false;
-  res.redirect(req.query.next === '/' ? '/' : '/admin/login');
-});
+app.post('/admin/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
 
 app.get('/admin', requireAdmin, async (req, res) => {
   res.render('admin', {
@@ -339,31 +356,22 @@ app.get('/', async (req, res) => {
 });
 
 // ---------- Auth ----------
-app.get('/login', (req, res) => res.render('login', { title: 'เข้าสู่ระบบ' }));
-
-app.post('/login', async (req, res) => {
-  const loginUsername = String(req.body.username || '').trim();
-  const loginPassword = String(req.body.password || '');
-  if (ADMIN_USERNAME && ADMIN_PASSWORD && loginUsername === ADMIN_USERNAME.trim() && loginPassword === ADMIN_PASSWORD) {
-    req.session.isAdmin = true;
-    delete req.session.userId;
-    delete req.session.user;
-    req.flash('success', `ยินดีต้อนรับผู้ดูแล ${ADMIN_USERNAME}`);
-    return req.session.save((error) => {
-      if (error) return res.status(500).send('ไม่สามารถบันทึกสถานะเข้าสู่ระบบได้');
-      res.redirect('/');
-    });
-  }
-  const result = await mainApi.login(loginUsername, loginPassword);
-  if (!result.ok) {
-    req.flash('error', (result.body && result.body.error) || 'เข้าสู่ระบบไม่สำเร็จ');
-    return res.redirect('/login');
-  }
-  req.session.userId = result.body.user.id;
-  req.session.user = result.body.user;
-  req.session.isAdmin = false;
-  req.flash('success', `ยินดีต้อนรับ ${result.body.user.username}`);
-  res.redirect(req.query.next && req.query.next.startsWith('/') ? req.query.next : '/my-shops');
+app.get('/login', (req, res) => {
+  if (req.session.userId) return res.redirect(safeNext(req.query.next, '/my-shops'));
+  if (req.query.next) req.session.returnTo = safeNext(req.query.next, '/my-shops');
+  res.render('login', { title: 'เข้าสู่ระบบ Shop Cloud' });
+});
+app.post('/login', async (req, res, next) => {
+  try {
+    const username = String(req.body.username || '').trim();
+    const password = String(req.body.password || '');
+    const isAdmin = !!(ADMIN_USERNAME && ADMIN_PASSWORD && username === ADMIN_USERNAME.trim() && password === ADMIN_PASSWORD);
+    const result = isAdmin ? await mainApi.platformAdmin(ADMIN_USERNAME) : await mainApi.login(username, password);
+    if (!result.ok) { req.flash('error', result.body.error || 'เข้าสู่ระบบไม่สำเร็จ'); return res.redirect('/login'); }
+    const target = safeNext(req.session.returnTo, isAdmin ? '/' : '/my-shops');
+    await establishLogin(req, result.body.user, isAdmin);
+    res.redirect(target);
+  } catch (error) { next(error); }
 });
 
 app.get('/register', async (req, res) => {
@@ -388,10 +396,10 @@ app.post('/register', async (req, res) => {
     req.flash('error', (result.body && result.body.error) || 'สมัครสมาชิกไม่สำเร็จ');
     return res.redirect('/register');
   }
-  req.session.userId = result.body.user.id;
-  req.session.user = result.body.user;
+  const returnTo = safeNext(req.session.returnTo, '/my-shops');
+  await establishLogin(req, result.body.user, false);
   req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${currentShopName()} Cloud`);
-  res.redirect('/');
+  res.redirect(returnTo);
 });
 
 app.post('/logout', (req, res) => {
@@ -427,6 +435,8 @@ app.post('/start', requireLogin, async (req, res) => {
   res.redirect('/my-shops');
 });
 
+require('./lib/rental-admin')(app, { mainApi, requireAdmin, requireLogin });
+
 // ---------- My shops ----------
 app.get('/my-shops', requireLogin, async (req, res) => {
   const [shopsRes, plansRes] = await Promise.all([mainApi.myShops(req.session.userId), mainApi.plans()]);
@@ -450,9 +460,10 @@ app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
 
 // ---------- Wallet / topup ----------
 app.get('/wallet', requireLogin, async (req, res) => {
-  const [topupsRes] = await Promise.all([mainApi.walletTopups(req.session.userId), refreshSessionUser(req)]);
+  const [topupsRes, paymentRes] = await Promise.all([mainApi.walletTopups(req.session.userId), mainApi.paymentInfo()]);
   res.render('wallet', {
     title: 'เติมเงิน',
+    payment: paymentRes.ok ? paymentRes.body.payment : null,
     topups: topupsRes.ok ? topupsRes.body.topups : [],
   });
 });
@@ -480,4 +491,5 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'ไม่พบหน้านี้' });
 });
 
-app.listen(PORT, () => console.log(`rent-app running at http://localhost:${PORT}`));
+if (require.main === module) app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`));
+module.exports = app;

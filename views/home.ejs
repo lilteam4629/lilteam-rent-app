@@ -50,6 +50,8 @@
       <div class="flex items-center gap-2">
         <button id="site-theme-toggle" type="button" class="effect-button" aria-label="สลับโหมดมืดสว่าง">☀️</button>
         <% if (isAdmin) { %>
+          <a href="/my-shops" class="text-sm text-[var(--gold)]">ร้านของฉัน</a>
+          <a href="/wallet" class="text-sm text-[var(--gold)]">เติมเงิน</a>
           <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
           <form action="/admin/logout?next=/" method="post"><button class="text-[var(--text-4)] hover:text-[var(--gold)] text-sm px-2">ออกจากระบบ</button></form>
         <% } else if (currentUser) { %>
