@@ -84,11 +84,15 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน์ของคุณ\nใน 1 นาที';
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 
-async function importLegacyTruemoneyOnce(){
-  const p=cloudStore.payment();if(p.truemoneyImported||p.truemoneyPhone)return;
-  const result=await mainApi.legacyTruemoneyConfig();if(!result.ok)return;
-  const phone=String(result.body.truemoneyPhone||'').trim();if(!phone)return;
-  p.truemoneyEnabled=result.body.truemoneyEnabled===true;p.truemoneyPhone=phone;p.truemoneyImported=true;cloudStore.save();
+async function importLegacyPaymentOnce(){
+  const p=cloudStore.payment();if(p.legacyPaymentImported)return;
+  const result=await mainApi.legacyPaymentConfig();if(!result.ok||!result.body.payment)return;
+  const allowed=['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
+  for(const key of allowed)p[key]=result.body.payment[key]||'';
+  if(!paymentService.PROVIDERS.has(p.slipProvider)||p.slipProvider==='none'){
+    if(p.easyslipApiKey)p.slipProvider='easyslip';else if(p.slipokBranchId&&p.slipokApiKey)p.slipProvider='slipok';else if(p.slipcheckApiKey)p.slipProvider='slipcheck';else if(p.rdcwClientId&&p.rdcwClientSecret)p.slipProvider='rdcw';else if(p.slip2goApiKey)p.slipProvider='slip2go';else p.slipProvider='none';
+  }
+  p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;cloudStore.save();
 }
 
 function currentShopName() {
@@ -527,5 +531,5 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'ไม่พบหน้านี้' });
 });
 
-if (require.main === module) importLegacyTruemoneyOnce().catch(e=>console.error('[TrueMoney import]',e.message)).finally(()=>app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`)));
+if (require.main === module) importLegacyPaymentOnce().catch(e=>console.error('[Payment import]',e.message)).finally(()=>app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`)));
 module.exports = app;
