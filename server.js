@@ -468,6 +468,40 @@ app.get('/wallet', requireLogin, async (req, res) => {
   });
 });
 
+app.post('/account/topup/truemoney', requireLogin, async (req, res) => {
+  const result = await mainApi.redeemTruemoney(req.session.userId, req.body.voucherLink);
+  if (!result.ok) { req.flash('error', result.body.error || 'เติมเงินไม่สำเร็จ'); return res.redirect('/wallet'); }
+  await refreshSessionUser(req); req.flash('success', `🧧 เติมเงินสำเร็จ ฿${Number(result.body.amount).toLocaleString()}`);
+  res.redirect('/account/topup/' + encodeURIComponent(result.body.requestId));
+});
+app.post('/account/topup', requireLogin, async (req, res) => {
+  const form = new FormData(); form.append('userId', req.session.userId); form.append('amount', String(req.body.amount || '')); form.append('method', req.body.method || 'bank_transfer');
+  const result = await mainApi.topup(form);
+  if (!result.ok) { req.flash('error', result.body.error || 'สร้างคำขอไม่สำเร็จ'); return res.redirect('/wallet'); }
+  res.redirect('/account/topup/' + encodeURIComponent(result.body.request.id));
+});
+app.get('/account/topup/:id', requireLogin, async (req, res) => {
+  const result = await mainApi.topupDetail(req.params.id, req.session.userId);
+  if (!result.ok) return res.status(result.status || 404).send('ไม่พบคำขอเติมเงิน');
+  res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', ...result.body, qrDataUrl: null, settings: { shopName: currentShopName(), branding: { logoImage: currentLogoImage() } } });
+});
+app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (req, res) => {
+  if (!req.file) { req.flash('error', 'กรุณาแนบรูปสลิป'); return res.redirect('/account/topup/' + encodeURIComponent(req.params.id)); }
+  const form = new FormData(); form.append('userId', req.session.userId); form.append('slip', req.file.buffer, { filename: req.file.originalname, contentType: req.file.mimetype });
+  const result = await mainApi.attachTopupSlip(req.params.id, form);
+  req.flash(result.ok ? 'success' : 'error', result.ok ? 'แนบสลิปแล้ว ระบบกำลังตรวจสอบ' : (result.body.error || 'แนบสลิปไม่สำเร็จ'));
+  res.redirect('/account/topup/' + encodeURIComponent(req.params.id));
+});
+app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
+  const result = await mainApi.topupDetail(req.params.id, req.session.userId);
+  res.status(result.status || 503).json(result.ok ? { status: result.body.request.status, slipCheck: result.body.request.slipCheck } : { error: 'not found' });
+});
+app.get('/account/topup/:id/slip-file', requireLogin, async (req, res, next) => {
+  try { const result = await mainApi.topupSlipStream(req.params.id, req.session.userId); result.data.pipe(res); }
+  catch (error) { if (error.response) return res.sendStatus(error.response.status); next(error); }
+});
+app.get('/account', requireLogin, (req, res) => res.redirect('/my-shops'));
+
 app.post('/wallet/topup', requireLogin, upload.single('slip'), async (req, res) => {
   const form = new FormData();
   form.append('userId', req.session.userId);
