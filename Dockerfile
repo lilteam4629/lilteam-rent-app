@@ -7,6 +7,7 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 
 COPY lib ./lib
+COPY services ./services
 COPY views ./views
 COPY server.js ./
 
