@@ -370,7 +370,7 @@ app.get('/', async (req, res) => {
 app.get('/login', (req, res) => {
   if (req.session.userId) return res.redirect(safeNext(req.query.next, '/my-shops'));
   if (req.query.next) req.session.returnTo = safeNext(req.query.next, '/my-shops');
-  res.render('login', { title: 'เข้าสู่ระบบ Shop Cloud' });
+  res.render('login', { title: 'เข้าสู่ระบบ LILTeam Shop' });
 });
 app.post('/login', async (req, res, next) => {
   try {

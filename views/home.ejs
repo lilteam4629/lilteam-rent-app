@@ -40,7 +40,7 @@
         <% } else { %>
           <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--gold-light)] to-[var(--gold-dark)] text-[var(--bg)] flex items-center justify-center">🏪</span>
         <% } %>
-        <span><%= shopName %> <span class="text-[var(--gold)]">Cloud</span></span>
+        <span><%= shopName %></span>
       </a>
       <nav class="hidden sm:flex items-center gap-6 text-sm text-[var(--text-3)]">
         <a href="#example" class="hover:text-[var(--gold)] transition-colors">ตัวอย่างร้าน</a>
@@ -74,12 +74,12 @@
 
   <section class="hero-glow relative overflow-hidden">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-16 pb-14 text-center">
-      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-5">
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-5 text-[#111]">
         <% if (heroCustomized) { %>
-          <span class="grad-text" style="white-space: pre-line;"><%= heroTitle %></span>
+          <span style="white-space: pre-line;"><%= heroTitle %></span>
         <% } else { %>
-          เปิดร้านค้า<span class="grad-text">ออนไลน์</span>ของคุณ<br class="hidden sm:block" />
-          ใน <span class="grad-text">1 นาที</span>
+          เปิดร้านค้าออนไลน์ของคุณ<br class="hidden sm:block" />
+          ใน 1 นาที
         <% } %>
       </h1>
       <p class="text-[var(--text-3)] text-base sm:text-lg max-w-2xl mx-auto mb-8">
@@ -182,7 +182,7 @@
 
   <footer class="border-t border-[var(--border)] py-8">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[var(--text-4)]">
-      <span>&copy; <%= new Date().getFullYear() %> <%= shopName %> Cloud</span>
+      <span>&copy; <%= new Date().getFullYear() %> <%= shopName %></span>
       <a href="/login" class="hover:text-[var(--gold)] transition-colors">เข้าสู่ระบบ →</a>
     </div>
   </footer>
