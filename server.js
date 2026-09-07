@@ -85,11 +85,11 @@ const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน�
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 
 async function importLegacyPaymentOnce(){
-  const p=cloudStore.payment();if(Number(p.legacyPaymentImportVersion||0)>=4)return;
+  const p=cloudStore.payment();if(Number(p.legacyPaymentImportVersion||0)>=5)return;
   const result=await mainApi.legacyPaymentConfig();if(!result.ok||!result.body.payment)return;
-  const allowed=['easyslipApiKey','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
+  const allowed=['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
   for(const key of allowed)p[key]=result.body.payment[key]||'';
-  p.slipProvider='easyslip';for(const key of ['byshopApiKey','byshopEndpoint','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint'])delete p[key];p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;p.legacyPaymentImportVersion=4;cloudStore.save();
+  if(!paymentService.PROVIDERS.has(p.slipProvider))p.slipProvider='easyslip';p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;p.legacyPaymentImportVersion=5;cloudStore.save();
 }
 
 function currentShopName() {
@@ -322,9 +322,9 @@ app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStor
 
 app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
 app.post('/admin/payment', requireAdmin, (req,res)=>{
-  const p=cloudStore.payment();p.slipProvider='easyslip';for(const key of ['easyslipApiKey','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึก EasySlip และบัญชีรับเงินแล้ว');res.redirect('/admin/payment');
+  const provider=String(req.body.slipProvider||'').trim().toLowerCase();if(!paymentService.PROVIDERS.has(provider)){req.flash('error','ผู้ให้บริการไม่ถูกต้อง');return res.redirect('/admin/payment')}const p=cloudStore.payment();for(const key of ['easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.slipProvider=provider;p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกระบบตรวจสลิปและบัญชีรับเงินแล้ว');res.redirect('/admin/payment');
 });
-app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test('easyslip',req.body)));
+app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(req.body.slipProvider,req.body)));
 
 // ---------- Landing ----------
 // Pulls a few real product image URLs straight from the live main site's
@@ -479,7 +479,7 @@ app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
 
 // ---------- Wallet / topup ----------
 app.get('/wallet', requireLogin, async (req, res) => {
-  const savedPayment=cloudStore.payment();const payment={...savedPayment,promptpayEnabled:Boolean(savedPayment.promptpayId)};
+  const savedPayment=cloudStore.payment();const payment={...savedPayment,promptpayEnabled:savedPayment.slipProvider==='easyslip'&&Boolean(savedPayment.promptpayId)};
   res.render('wallet', {
     title: 'เติมเงิน',
     payment,
@@ -500,7 +500,7 @@ app.post('/account/topup', requireLogin, async (req, res) => {
 });
 app.get('/account/topup/:id', requireLogin, async (req, res) => {
   const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!request)return res.status(404).send('ไม่พบคำขอเติมเงิน');
-  const payment=cloudStore.payment();res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment, automaticSlipCheck:Boolean(payment.easyslipApiKey), qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
+  const payment=cloudStore.payment();res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment, automaticSlipCheck:paymentService.configured(payment), qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
 });
 app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (req, res) => {
   if (!req.file) { req.flash('error', 'กรุณาแนบรูปสลิป'); return res.redirect('/account/topup/' + encodeURIComponent(req.params.id)); }
