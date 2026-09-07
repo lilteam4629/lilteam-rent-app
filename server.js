@@ -325,10 +325,10 @@ app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStor
 
 app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
 app.post('/admin/payment', requireAdmin, (req,res)=>{
-  if(!paymentService.PROVIDERS.has(req.body.slipProvider)){req.flash('error','ผู้ให้บริการตรวจสลิปไม่ถูกต้อง');return res.redirect('/admin/payment')}
+  req.body.slipProvider=String(Array.isArray(req.body.slipProvider)?req.body.slipProvider.at(-1):req.body.slipProvider||'').trim().toLowerCase();if(!paymentService.PROVIDERS.has(req.body.slipProvider)){req.flash('error','ผู้ให้บริการตรวจสลิปไม่ถูกต้อง');return res.redirect('/admin/payment')}
   const p=cloudStore.payment();for(const key of ['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();delete p.byshopApiKey;delete p.byshopEndpoint;p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกบัญชีรับเงินและระบบตรวจสลิปแล้ว');res.redirect('/admin/payment');
 });
-app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(req.body.slipProvider,req.body)));
+app.post('/admin/payment/test', requireAdmin, async(req,res)=>{const provider=String(Array.isArray(req.body.slipProvider)?req.body.slipProvider.at(-1):req.body.slipProvider||'').trim().toLowerCase();res.json(await paymentService.test(provider,req.body))});
 
 // ---------- Landing ----------
 // Pulls a few real product image URLs straight from the live main site's
