@@ -56,12 +56,12 @@
         <button id="site-theme-toggle" type="button" class="effect-button" aria-label="สลับโหมดมืดสว่าง">☀️</button>
         <% if (isAdmin) { %>
           <a href="/my-shops" class="hidden sm:inline text-sm text-[var(--gold)]">ร้านของฉัน</a>
-          <a href="/wallet" class="hidden sm:inline text-sm text-[var(--gold)]">เติมเงิน</a>
+          <a href="/wallet" class="border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">💰 <span class="hidden sm:inline">เติมเงิน</span></a>
           <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
           <a href="/admin" class="sm:hidden text-[var(--gold)] font-medium px-2.5 py-1.5 rounded-lg text-xs border border-[var(--gold)]/50">🛠️</a>
           <form action="/admin/logout?next=/" method="post" class="hidden sm:block"><button class="text-[var(--text-4)] hover:text-[var(--gold)] text-sm px-2">ออกจากระบบ</button></form>
         <% } else if (currentUser) { %>
-          <a href="/wallet" class="hidden sm:inline-block border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">เติมเงิน</a>
+          <a href="/wallet" class="border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">💰 <span class="hidden sm:inline">เติมเงิน</span></a>
           <a href="/my-shops" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">ร้านของฉัน</a>
         <% } else { %>
           <a href="/register" class="hidden sm:inline-block border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">สมัครสมาชิก</a>
@@ -95,12 +95,11 @@
         <a href="#packages" class="w-full sm:w-auto text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold px-7 py-3 rounded-xl transition-transform hover:-translate-y-0.5">ดูแพ็กเกจทั้งหมด</a>
         <a href="<%= currentUser ? '/my-shops' : '/login' %>" class="w-full sm:w-auto text-center bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-7 py-3 rounded-xl transition-colors"><%= currentUser ? 'ไปหน้าร้านของฉัน' : 'เข้าสู่ระบบเพื่อเริ่มต้น' %></a>
       </div>
+      <% if (!currentUser) { %>
       <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mb-10 text-sm">
-        <% if (!currentUser) { %>
-          <a href="/register" class="text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">ยังไม่มีบัญชี? <span class="underline">สมัครสมาชิก</span></a>
-        <% } %>
-        <a href="/wallet" class="text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">💰 <span class="underline">เติมเงินเข้ากระเป๋า</span></a>
+        <a href="/register" class="text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">ยังไม่มีบัญชี? <span class="underline">สมัครสมาชิก</span></a>
       </div>
+      <% } %>
       <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
         <span class="badge">⚡ ติดตั้งอัตโนมัติทันที</span>
         <span class="badge">🔒 SSL ฟรีทุกแพ็กเกจ</span>
