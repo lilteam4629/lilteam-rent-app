@@ -13,13 +13,17 @@
 <body class="min-h-screen">
   <%- include('_public-theme-toggle') %>
   <%- include('_report-issue-button') %>
-  <header class="border-b border-[var(--border)]">
-    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-      <a href="/" class="font-bold text-sm">← หน้าหลัก</a>
-      <div class="flex items-center gap-3 text-sm">
-        <% if (currentUser) { %><span class="text-[var(--text-3)]">฿<%= currentUser.walletBalance.toLocaleString() %></span><% } %>
-        <a href="/wallet" class="text-[var(--gold)] hover:underline">เติมเงิน</a>
-        <form action="/logout" method="post"><button class="text-[var(--text-4)] hover:text-[var(--coral)]">ออกจากระบบ</button></form>
+  <header class="border-b border-[var(--border)] sticky top-0 z-30 bg-[var(--bg)]/90 backdrop-blur">
+    <div class="max-w-3xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
+      <a href="/" class="font-bold text-xs sm:text-sm text-[var(--text-2)] hover:text-[var(--gold)] transition-colors whitespace-nowrap shrink-0">← หน้าหลัก</a>
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <% if (currentUser) { %>
+          <span class="hidden sm:inline-flex items-center border border-[var(--border-light)] text-[var(--text-3)] font-medium px-3 py-1.5 rounded-lg text-sm">฿<%= currentUser.walletBalance.toLocaleString() %></span>
+        <% } %>
+        <a href="/wallet" class="border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">💰 <span class="hidden sm:inline">เติมเงิน</span></a>
+        <form action="/logout" method="post">
+          <button class="text-[var(--text-4)] hover:text-[var(--coral)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap border border-transparent hover:border-[var(--coral)]/40 transition-colors">ออกจากระบบ</button>
+        </form>
       </div>
     </div>
   </header>
