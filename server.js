@@ -23,6 +23,7 @@ app.set('trust proxy', 1);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.get('/health', (req,res)=>res.status(200).json({ok:true}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(settings.UPLOADS_DIR));
