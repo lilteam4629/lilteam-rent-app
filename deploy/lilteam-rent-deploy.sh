@@ -17,4 +17,33 @@ if [ "$BEFORE" = "$AFTER" ]; then
 fi
 
 echo "[lilteam-rent-deploy] $BEFORE -> $AFTER, rebuilding"
-docker compose up -d --build
+
+# Finish the build before replacing the container that is serving customers.
+# Keep the previous image and restore it automatically if health checks fail.
+CURRENT_CONTAINER="$(docker compose ps -q rent-app)"
+OLD_IMAGE_ID=""
+OLD_IMAGE_NAME=""
+if [ -n "$CURRENT_CONTAINER" ]; then
+  OLD_IMAGE_ID="$(docker inspect --format '{{.Image}}' "$CURRENT_CONTAINER")"
+  OLD_IMAGE_NAME="$(docker inspect --format '{{.Config.Image}}' "$CURRENT_CONTAINER")"
+fi
+
+docker compose build rent-app
+docker compose up -d --no-build rent-app
+
+for _ in $(seq 1 24); do
+  if curl --fail --silent http://127.0.0.1:3001/health >/dev/null; then
+    docker image prune -f >/dev/null
+    exit 0
+  fi
+  sleep 5
+done
+
+echo "Deployment health check failed" >&2
+docker compose logs --tail=100 rent-app >&2
+if [ -n "$OLD_IMAGE_ID" ] && [ -n "$OLD_IMAGE_NAME" ]; then
+  echo "Restoring the previous healthy image" >&2
+  docker tag "$OLD_IMAGE_ID" "$OLD_IMAGE_NAME"
+  docker compose up -d --no-build rent-app
+fi
+exit 1
