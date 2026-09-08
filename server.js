@@ -384,7 +384,7 @@ app.post('/login', async (req, res, next) => {
     if(!user && !isAdmin){const legacy=await mainApi.login(username,password);if(legacy.ok){const allowed=await mainApi.legacyEligibility(legacy.body.user.id);if(allowed.ok&&allowed.body.eligible){user={...legacy.body.user,passwordHash:await bcrypt.hash(password,10),role:'customer',status:'active',migratedFromMain:true,createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();}}}
     if(!isAdmin&&(!user||user.status==='banned'||!await bcrypt.compare(password,user.passwordHash||''))){req.flash('error','ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');return res.redirect('/login');}
     if(isAdmin){user=cloudStore.data.users.find(u=>u.cloudAdmin)||{id:cloudStore.id(),username:ADMIN_USERNAME,email:'',passwordHash:'',role:'customer',status:'active',walletBalance:0,cloudAdmin:true,createdAt:new Date().toISOString()};if(!cloudStore.data.users.includes(user)){cloudStore.data.users.push(user);cloudStore.save();}}
-    const target = safeNext(req.session.returnTo, isAdmin ? '/' : '/my-shops');
+    const target = safeNext(req.session.returnTo, '/');
     await establishLogin(req, cloudStore.publicUser(user), isAdmin);
     res.redirect(target);
   } catch (error) { next(error); }
@@ -409,7 +409,7 @@ app.post('/register', async (req, res) => {
   if(!await recaptcha.verify(req.body['g-recaptcha-response'],req.ip)){req.flash('error','กรุณายืนยันแคปช่า');return res.redirect('/register');}
   if(cloudStore.data.users.some(u=>(u.username||'').toLowerCase()===username.trim().toLowerCase()||(u.email||'').toLowerCase()===email.trim().toLowerCase())){req.flash('error','ชื่อผู้ใช้หรืออีเมลถูกใช้แล้ว');return res.redirect('/register');}
   const user={id:cloudStore.id(),username:username.trim(),email:email.trim(),passwordHash:await bcrypt.hash(password,10),role:'customer',walletBalance:0,status:'active',createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();
-  const returnTo = safeNext(req.session.returnTo, '/my-shops');
+  const returnTo = safeNext(req.session.returnTo, '/');
   await establishLogin(req, cloudStore.publicUser(user), false);
   req.flash('success', `สมัครสมาชิกสำเร็จ! ยินดีต้อนรับสู่ ${currentShopName()} Cloud`);
   res.redirect(returnTo);
