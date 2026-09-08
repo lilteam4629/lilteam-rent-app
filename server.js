@@ -84,6 +84,7 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || null;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน์ของคุณ\nใน 1 นาที';
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
+const DISCORD_INVITE_URL = process.env.DISCORD_INVITE_URL || 'https://discord.gg/DfYgGzs3BK';
 
 async function importLegacyPaymentOnce(){
   const p=cloudStore.payment();if(Number(p.legacyPaymentImportVersion||0)>=5)return;
@@ -117,6 +118,7 @@ app.use((req, res, next) => {
   res.locals.heroTitle = currentHeroTitle();
   res.locals.heroSubtitle = currentHeroSubtitle();
   res.locals.heroCustomized = isHeroTitleCustomized();
+  res.locals.discordInviteUrl = DISCORD_INVITE_URL;
   res.locals.siteEffects = {
     snowEnabled: settings.get().snowEnabled === true,
     musicEnabled: settings.get().musicEnabled === true,
