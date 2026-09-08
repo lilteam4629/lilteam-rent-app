@@ -132,7 +132,7 @@
       const sent=await fetch(signed.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type},body:file});if(!sent.ok)throw new Error('ส่งรูปเข้า R2 ไม่สำเร็จ');
       const hidden=document.createElement('input');hidden.type='hidden';hidden.name=input.name+'R2Url';hidden.value=signed.publicUrl;form.appendChild(hidden);
       input.required=false;input.value='';if(button)button.disabled=false;form.requestSubmit(button||undefined);
-    }catch(error){if(button){button.disabled=false;button.textContent='ลองใหม่';}alert(error.message);}
+    }catch(error){if(button){button.disabled=false;button.textContent='กำลังอัปโหลดแบบสำรอง...';}HTMLFormElement.prototype.submit.call(form);}
   },true);
 })();
 </script>
