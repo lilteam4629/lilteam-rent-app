@@ -24,6 +24,7 @@ app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.get('/health', (req,res)=>res.status(200).json({ok:true}));
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(settings.UPLOADS_DIR));
@@ -198,16 +199,21 @@ app.post('/admin/hero/reset', requireAdmin, (req, res) => {
   res.redirect('/admin');
 });
 
+app.post('/admin/media/direct-upload', requireAdmin, async (req,res)=>{
+  const result=await mainApi.directUpload(req.body.filename,req.body.contentType);
+  res.status(result.status||500).json(result.body);
+});
+
 app.post('/admin/showcase-images', requireAdmin, upload.single('image'), (req, res) => {
-  if (!req.file) {
+  const directUrl=String(req.body.imageR2Url||'').trim();
+  if (!req.file&&!/^https:\/\//i.test(directUrl)) {
     req.flash('error', 'กรุณาเลือกไฟล์รูปภาพ');
     return res.redirect('/admin');
   }
-  const ext = path.extname(req.file.originalname) || '.jpg';
-  const filename = `showcase-${Date.now()}${ext}`;
-  fs.writeFileSync(path.join(settings.UPLOADS_DIR, filename), req.file.buffer);
+  let imageUrl=directUrl;
+  if(req.file){const ext=path.extname(req.file.originalname)||'.jpg';const filename=`showcase-${Date.now()}${ext}`;fs.writeFileSync(path.join(settings.UPLOADS_DIR,filename),req.file.buffer);imageUrl=`/uploads/${filename}`;}
   const current = settings.get().showcaseImages || [];
-  settings.update({ showcaseImages: [...current, `/uploads/${filename}`].slice(-4) });
+  settings.update({ showcaseImages: [...current, imageUrl].slice(-4) });
   req.flash('success', 'เพิ่มรูปตัวอย่างร้านค้าแล้ว');
   res.redirect('/admin');
 });
@@ -227,14 +233,14 @@ app.post('/admin/showcase-images/reset', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/logo', requireAdmin, upload.single('logo'), (req, res) => {
-  if (!req.file) {
+  const directUrl=String(req.body.logoR2Url||'').trim();
+  if (!req.file&&!/^https:\/\//i.test(directUrl)) {
     req.flash('error', 'กรุณาเลือกไฟล์รูปภาพ');
     return res.redirect('/admin');
   }
-  const ext = path.extname(req.file.originalname) || '.png';
-  const filename = `logo-${Date.now()}${ext}`;
-  fs.writeFileSync(path.join(settings.UPLOADS_DIR, filename), req.file.buffer);
-  settings.update({ logoImage: `/uploads/${filename}` });
+  let imageUrl=directUrl;
+  if(req.file){const ext=path.extname(req.file.originalname)||'.png';const filename=`logo-${Date.now()}${ext}`;fs.writeFileSync(path.join(settings.UPLOADS_DIR,filename),req.file.buffer);imageUrl=`/uploads/${filename}`;}
+  settings.update({ logoImage: imageUrl });
   req.flash('success', 'อัปโหลดโลโก้ใหม่แล้ว');
   res.redirect('/admin');
 });

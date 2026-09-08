@@ -117,5 +117,24 @@
       <p class="text-xs text-[var(--text-4)] mt-2">สูงสุด 4 รูป</p>
     </div>
   </div>
+<script>
+(function(){
+  document.addEventListener('submit',async function(event){
+    const form=event.target, input=form.querySelector('input[type="file"]');
+    if(!input||!input.files||!input.files.length)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const button=form.querySelector('button[type="submit"],button:not([type])');
+    if(button){button.disabled=true;button.textContent='กำลังฝากรูป...';}
+    try{
+      const file=input.files[0];
+      const signedResponse=await fetch('/admin/media/direct-upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:file.name,contentType:file.type})});
+      const signed=await signedResponse.json();if(!signedResponse.ok||!signed.ok)throw new Error(signed.error||'สร้างลิงก์ไม่สำเร็จ');
+      const sent=await fetch(signed.uploadUrl,{method:'PUT',headers:{'Content-Type':file.type},body:file});if(!sent.ok)throw new Error('ส่งรูปเข้า R2 ไม่สำเร็จ');
+      const hidden=document.createElement('input');hidden.type='hidden';hidden.name=input.name+'R2Url';hidden.value=signed.publicUrl;form.appendChild(hidden);
+      input.required=false;input.value='';if(button)button.disabled=false;form.requestSubmit(button||undefined);
+    }catch(error){if(button){button.disabled=false;button.textContent='ลองใหม่';}alert(error.message);}
+  },true);
+})();
+</script>
 </body>
 </html>
