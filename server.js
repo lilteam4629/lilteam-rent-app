@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+require('express-async-errors');
 const express = require('express');
 const session = require('express-session');
 const flash = require('connect-flash');
@@ -537,5 +538,30 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'ไม่พบหน้านี้' });
 });
 
-if (require.main === module) importLegacyPaymentOnce().catch(e=>console.error('[Payment import]',e.message)).finally(()=>app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`)));
+app.use((err, req, res, next) => {
+  console.error('[Unhandled Server Error]', err);
+  if (res.headersSent) return next(err);
+  res.status(500).render('404', { title: 'เกิดข้อผิดพลาดชั่วคราว' });
+});
+
+let server = null;
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[server] ${signal} received, draining active requests...`);
+  if (!server) return process.exit(0);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 25000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+if (require.main === module) {
+  importLegacyPaymentOnce()
+    .catch(e => console.error('[Payment import]', e.message))
+    .finally(() => {
+      server = app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`));
+    });
+}
 module.exports = app;
