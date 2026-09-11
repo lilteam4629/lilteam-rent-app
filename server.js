@@ -370,9 +370,10 @@ async function getShowcaseImages() {
 
 app.get('/', async (req, res) => {
   const [plansRes, showcaseImages] = await Promise.all([mainApi.plans(), getShowcaseImages()]);
+  if (plansRes.ok && Array.isArray(plansRes.body.plans)) settings.update({ cachedPlans: plansRes.body.plans });
   res.render('home', {
     title: `เช่าเว็บร้านค้าออนไลน์ | ${currentShopName()} Cloud`,
-    plans: plansRes.ok ? plansRes.body.plans : [],
+    plans: plansRes.ok ? plansRes.body.plans : (settings.get().cachedPlans || []),
     showcaseImages,
   });
 });
@@ -430,9 +431,10 @@ app.post('/logout', (req, res) => {
 // ---------- Start a shop ----------
 app.get('/start', requireLogin, async (req, res) => {
   const plansRes = await mainApi.plans();
+  if (plansRes.ok && Array.isArray(plansRes.body.plans)) settings.update({ cachedPlans: plansRes.body.plans });
   res.render('start', {
     title: 'เปิดร้านของคุณเอง',
-    plans: plansRes.ok ? plansRes.body.plans : [],
+    plans: plansRes.ok ? plansRes.body.plans : (settings.get().cachedPlans || []),
     preselectedPlanId: String(req.query.plan || ''),
     recaptchaSiteKey: recaptcha.siteKey(),
   });
@@ -466,10 +468,11 @@ require('./lib/rental-admin')(app, { mainApi, requireAdmin, requireLogin });
 // ---------- My shops ----------
 app.get('/my-shops', requireLogin, async (req, res) => {
   const [shopsRes, plansRes] = await Promise.all([mainApi.myShops(req.session.userId), mainApi.plans()]);
+  if (plansRes.ok && Array.isArray(plansRes.body.plans)) settings.update({ cachedPlans: plansRes.body.plans });
   res.render('my-shops', {
     title: 'ร้านของฉัน',
     shops: shopsRes.ok ? shopsRes.body.shops : [],
-    plans: plansRes.ok ? plansRes.body.plans : [],
+    plans: plansRes.ok ? plansRes.body.plans : (settings.get().cachedPlans || []),
   });
 });
 
