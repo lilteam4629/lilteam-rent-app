@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/tailwind.generated.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <%- include('_head-style') %>
@@ -90,5 +90,5 @@
     setInterval(tickCountdowns, 30000);
   </script>
 <p class="text-center pb-6"><a href="/sales" class="text-[var(--gold)]">ประวัติคีย์และเว็บเช่าเดิม</a></p>
-</body>
+<%- include('_music-player') %></body>
 </html>

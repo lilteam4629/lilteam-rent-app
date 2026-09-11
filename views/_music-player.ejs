@@ -72,6 +72,7 @@
       let player = null;
       let isPlaying = false;
       let segmentTimer = null;
+      let recoveryTimer = null;
       const startSeconds = parseInt(widget.dataset.startSeconds, 10) || 0;
       const endSeconds = parseInt(widget.dataset.endSeconds, 10) || 0;
 
@@ -114,6 +115,15 @@
         playingRing.classList.toggle('hidden', !playing);
       }
 
+      function recoverPlayback(delay) {
+        if (!playbackWanted || document.hidden || !player || typeof player.playVideo !== 'function') return;
+        if (recoveryTimer) clearTimeout(recoveryTimer);
+        recoveryTimer = setTimeout(function () {
+          recoveryTimer = null;
+          if (playbackWanted && !document.hidden && player && player.playVideo) player.playVideo();
+        }, delay || 700);
+      }
+
       // Keep the user's intent independently from YouTube's delayed state events.
       // This also makes taps made while the iframe is still loading take effect on ready.
       function requestPlayback(wanted) {
@@ -127,6 +137,7 @@
           player.unMute();
           player.playVideo();
         } else {
+          if (recoveryTimer) clearTimeout(recoveryTimer);
           player.pauseVideo();
           setPlayingUI(false);
         }
@@ -178,6 +189,8 @@
                 if (e.data === YT.PlayerState.ENDED && playbackWanted) {
                   player.seekTo(startSeconds, true);
                   player.playVideo();
+                } else if (e.data === YT.PlayerState.PAUSED && playbackWanted) {
+                  recoverPlayback(900);
                 }
               }
             },
@@ -227,8 +240,12 @@
       // A bfcache restore keeps the existing player. Never reload here: reloading would
       // destroy the player and is exactly what makes back/forward playback jump around.
       window.addEventListener('pageshow', function (e) {
-        if (e.persisted && playbackWanted && player && player.playVideo) player.playVideo();
+        if (e.persisted) recoverPlayback(100);
       });
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) recoverPlayback(180);
+      });
+      window.addEventListener('online', function () { recoverPlayback(300); });
     })();
   </script>
   <% } %>

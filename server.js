@@ -24,11 +24,12 @@ app.set('trust proxy', 1);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.get('/health', (req,res)=>res.status(200).json({ok:true}));
+app.get('/health', (req,res)=>res.status(200).json({ok:true,version:'1.0.0',uptime:Math.floor(process.uptime())}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(settings.UPLOADS_DIR));
+const staticMaxAge = process.env.NODE_ENV === 'production' ? '7d' : 0;
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: staticMaxAge }));
+app.use('/uploads', express.static(settings.UPLOADS_DIR, { maxAge: staticMaxAge }));
 
 // This app holds no sensitive data of its own — every real fact (users,
 // shops, wallet balance) lives behind the internal API on the main app.

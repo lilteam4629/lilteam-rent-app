@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %></title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/tailwind.generated.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <%- include('_head-style') %>
@@ -72,5 +72,5 @@
     <% } %>
     <p class="text-[10px] text-[var(--text-4)] text-center mt-4">ร้านที่เปิดจะได้ระบบสินค้า/สต๊อก/ออเดอร์/หลังบ้านครบเหมือนร้านตัวอย่างทุกอย่าง — จ่ายจากเครดิตบัญชีนี้ (<a href="/wallet" class="underline">เติมเงิน</a> ถ้ายังไม่พอ)</p>
   </div>
-</body>
+<%- include('_music-player') %></body>
 </html>
