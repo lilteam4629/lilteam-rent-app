@@ -24,6 +24,8 @@ const rentalHtml = ejs.render(fs.readFileSync(rentalTemplate, 'utf8'), {
 }, { filename: rentalTemplate });
 assert(rentalHtml.includes('name="scope" value="selected"'));
 assert(rentalHtml.includes('name="scope" value="all"'));
+assert(rentalHtml.includes('name="confirmAll"'));
+assert(rentalHtml.includes("allToken.value='CONFIRM_ALL_TENANTS'"));
 assert(rentalHtml.includes('name="shopIds" value="shop-a"'));
 assert(rentalHtml.includes('name="releaseId"') && rentalHtml.includes('value="release-a"'));
 assert(rentalHtml.includes('/admin/rentals/releases/deploy'));
