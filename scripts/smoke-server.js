@@ -19,10 +19,13 @@ const rentalHtml = ejs.render(fs.readFileSync(rentalTemplate, 'utf8'), {
   rentedShops: [{ id: 'shop-a', name: 'ร้าน A', slug: 'shop-a', ownerUsername: 'owner', expiresAt: Date.now() + 86400000,
     managementUrl: 'https://shop-a.lilteam.site/admin', features: { boxGame: true, railGame: false, music: false, snow: true, welcomePopup: false } }],
   featureCatalog: [{ key: 'boxGame', label: 'กล่องสุ่ม', description: 'ทดสอบ' }, { key: 'snow', label: 'เอฟเฟกต์หิมะ', description: 'ทดสอบ' }],
+  featureReleases: [{ id: 'release-a', name: 'ระบบพิเศษ', version: '1.0.0', feature: 'snow', action: 'enable', deployments: [] }],
   transactions: [], sales: [], discordSettings: {}, discordConfigured: false, discordReady: false,
 }, { filename: rentalTemplate });
 assert(rentalHtml.includes('name="scope" value="selected"'));
 assert(rentalHtml.includes('name="scope" value="all"'));
 assert(rentalHtml.includes('name="shopIds" value="shop-a"'));
+assert(rentalHtml.includes('name="releaseId"') && rentalHtml.includes('value="release-a"'));
+assert(rentalHtml.includes('/admin/rentals/releases/deploy'));
 assert(rentalHtml.includes('https://shop-a.lilteam.site/admin'));
-console.log(`Smoke checks passed: ${templates.length} EJS templates, rental feature controls, and server syntax`);
+console.log(`Smoke checks passed: ${templates.length} EJS templates, versioned system delivery controls, and server syntax`);
