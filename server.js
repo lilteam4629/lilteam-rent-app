@@ -568,7 +568,13 @@ if (require.main === module) {
   importLegacyPaymentOnce()
     .catch(e => console.error('[Payment import]', e.message))
     .finally(() => {
-      server = app.listen(PORT, () => console.log(`Shop Cloud running on ${PORT}`));
+      server = app.listen(PORT, () => {
+        console.log(`Shop Cloud running on ${PORT}`);
+        mainApi.ensureSystemLab().then(result => {
+          if (!result.ok) console.error('[System Lab]', result.body.error || 'provision failed');
+          else console.log(`[System Lab] ${result.body.created ? 'created' : 'ready'}: ${result.body.shop.slug}`);
+        }).catch(error => console.error('[System Lab]', error.message));
+      });
     });
 }
 module.exports = app;
