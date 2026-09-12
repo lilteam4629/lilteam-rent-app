@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 require('express-async-errors');
 const express = require('express');
+const compression = require('compression');
 const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
@@ -21,6 +22,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(compression({ threshold: 1024 }));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

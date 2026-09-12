@@ -123,7 +123,7 @@
           <span class="ml-3 text-xs text-[var(--text-4)] bg-[var(--bg)] rounded-full px-3 py-1 truncate">🔒 <%= mainDomain %></span>
         </div>
         <div class="relative bg-white overflow-hidden" style="aspect-ratio: 2/1;">
-          <img src="/showcase-full.png" alt="ตัวอย่างหน้าเว็บ <%= shopName %> แบบเต็ม" class="absolute inset-0 w-full h-full object-cover object-top" loading="lazy">
+          <img src="/showcase-full.webp" alt="ตัวอย่างหน้าเว็บ <%= shopName %> แบบเต็ม" class="absolute inset-0 w-full h-full object-cover object-top" loading="lazy" decoding="async" fetchpriority="low">
           <span class="absolute right-3 bottom-3 text-xs bg-black/70 text-white rounded-full px-3 py-1.5 opacity-0 group-hover:opacity-100 transition">เปิดดูร้านค้าจริง ↗</span>
         </div>
       </div>
@@ -199,7 +199,7 @@
       function sync(){theme.textContent=root.getAttribute('data-theme')==='light'?'🌙':'☀️'} sync();
       theme.onclick=function(){var n=root.getAttribute('data-theme')==='light'?'dark':'light';root.setAttribute('data-theme',n);try{localStorage.setItem('rentTheme',n)}catch(e){}sync()};
       <% if (siteEffects.snowEnabled) { %>
-      setInterval(function(){if(document.hidden)return;var f=document.createElement('span');f.className='snowflake';f.textContent=['❄','❅','•'][Math.floor(Math.random()*3)];f.style.left=Math.random()*100+'vw';f.style.opacity=.25+Math.random()*.55;f.style.fontSize=8+Math.random()*14+'px';f.style.setProperty('--drift',(Math.random()*100-50)+'px');f.style.animationDuration=6+Math.random()*7+'s';document.body.appendChild(f);setTimeout(function(){f.remove()},14000)},450);
+      setInterval(function(){if(document.hidden)return;var f=document.createElement('span');f.className='snowflake';f.textContent=['❄','❅','•'][Math.floor(Math.random()*3)];f.style.left=Math.random()*100+'vw';f.style.opacity=.25+Math.random()*.45;f.style.fontSize=8+Math.random()*10+'px';f.style.setProperty('--drift',(Math.random()*70-35)+'px');f.style.animationDuration=7+Math.random()*6+'s';document.body.appendChild(f);setTimeout(function(){f.remove()},12000)},900);
       <% } %>
     })();
   </script>
