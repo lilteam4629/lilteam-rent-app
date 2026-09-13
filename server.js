@@ -21,6 +21,21 @@ const { safeNext, establishLogin } = require('./lib/auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+async function sharedRecaptchaSiteKey() {
+  const config = await mainApi.config();
+  return config.ok && config.body && config.body.recaptchaSiteKey
+    ? config.body.recaptchaSiteKey
+    : recaptcha.siteKey();
+}
+
+async function verifySharedCaptcha(token, remoteip) {
+  const result = await mainApi.verifyCaptcha(token, remoteip);
+  if (result.ok) return true;
+  // Local verification is a development fallback for running rent-app
+  // without the main service; production uses the platform-wide key above.
+  return recaptcha.isConfigured() ? recaptcha.verify(token, remoteip) : false;
+}
+
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(compression({ threshold: 1024 }));
@@ -405,7 +420,7 @@ app.post('/login', async (req, res, next) => {
 app.get('/register', async (req, res) => {
   // Site key is public by design (embedded in the widget) — fetched from
   // the main app so both apps always show the same recaptcha config.
-  res.render('register', { title: 'สมัครสมาชิก', recaptchaSiteKey: recaptcha.siteKey() });
+  res.render('register', { title: 'สมัครสมาชิก', recaptchaSiteKey: await sharedRecaptchaSiteKey() });
 });
 
 app.post('/register', async (req, res) => {
@@ -418,7 +433,7 @@ app.post('/register', async (req, res) => {
     req.flash('error', 'รหัสผ่านไม่ตรงกัน');
     return res.redirect('/register');
   }
-  if(!await recaptcha.verify(req.body['g-recaptcha-response'],req.ip)){req.flash('error','กรุณายืนยันแคปช่า');return res.redirect('/register');}
+  if(!await verifySharedCaptcha(req.body['g-recaptcha-response'],req.ip)){req.flash('error','กรุณายืนยันแคปช่า');return res.redirect('/register');}
   if(cloudStore.data.users.some(u=>(u.username||'').toLowerCase()===username.trim().toLowerCase()||(u.email||'').toLowerCase()===email.trim().toLowerCase())){req.flash('error','ชื่อผู้ใช้หรืออีเมลถูกใช้แล้ว');return res.redirect('/register');}
   const user={id:cloudStore.id(),username:username.trim(),email:email.trim(),passwordHash:await bcrypt.hash(password,10),role:'customer',walletBalance:0,status:'active',createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();
   const returnTo = safeNext(req.session.returnTo, '/');
@@ -439,7 +454,7 @@ app.get('/start', requireLogin, async (req, res) => {
     title: 'เปิดร้านของคุณเอง',
     plans: plansRes.ok ? plansRes.body.plans : (settings.get().cachedPlans || []),
     preselectedPlanId: String(req.query.plan || ''),
-    recaptchaSiteKey: recaptcha.siteKey(),
+    recaptchaSiteKey: await sharedRecaptchaSiteKey(),
   });
 });
 

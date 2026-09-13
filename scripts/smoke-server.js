@@ -32,4 +32,19 @@ assert(rentalHtml.includes('name="releaseId"') && rentalHtml.includes('value="re
 assert(rentalHtml.includes('/admin/rentals/releases/deploy'));
 assert(rentalHtml.includes('https://shop-a.lilteam.site/admin'));
 assert(!rentalHtml.includes('ฝนตกหน้าเว็บ:'));
+const captchaKey = 'test-public-site-key';
+for (const templateName of ['register.ejs', 'start.ejs']) {
+  const template = path.join(root, 'views', templateName);
+  const html = ejs.render(fs.readFileSync(template, 'utf8'), {
+    title: 'ทดสอบ CAPTCHA', messages: { error: [], success: [] }, shopName: 'LilTeam', logoImage: null,
+    currentUser: { id: 'user-a', username: 'tester', walletBalance: 999 }, recaptchaSiteKey: captchaKey,
+    discordInviteUrl: 'https://discord.example/invite',
+    siteEffects: {},
+    mainDomain: 'lilteam.site',
+    plans: [{ id: 'plan-a', days: 30, price: 179, promo: true }], preselectedPlanId: 'plan-a',
+  }, { filename: template });
+  assert(html.includes('class="g-recaptcha"'));
+  assert(html.includes(`data-sitekey="${captchaKey}"`));
+  assert(html.includes('https://www.google.com/recaptcha/api.js'));
+}
 console.log(`Smoke checks passed: ${templates.length} EJS templates, versioned system delivery controls, and server syntax`);
