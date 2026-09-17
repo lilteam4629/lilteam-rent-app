@@ -14,9 +14,11 @@
       --bg:#100e08; --card:#1a160d; --border:#3a3220; --border-light:#443a22; --input:#211c11;
       --text:#f3ecd8; --text-2:#d6c9a0; --text-3:#a89a6c; --text-4:#7a6f47;
       --gold:#c8a63f; --gold-hover:#dbb94d; --gold-light:#e8d48a; --gold-dark:#8a6f28;
+      --button-text:#100e08;
     }
-    :root[data-theme="light"]{--bg:#faf7ee;--card:#fff;--border:#e6dcc0;--border-light:#ddcfaa;--input:#f3ecd9;--text:#28220f;--text-2:#4b4021;--text-3:#76683f;--text-4:#9d8e64;--gold:#a98428;--gold-hover:#8f6d1c;--gold-light:#caa94c;--gold-dark:#725613}
+    :root[data-theme="light"]{--bg:#faf7ee;--card:#fff;--border:#e6dcc0;--border-light:#ddcfaa;--input:#f3ecd9;--text:#28220f;--text-2:#4b4021;--text-3:#76683f;--text-4:#9d8e64;--gold:#85640f;--gold-hover:#6e520c;--gold-light:#caa94c;--gold-dark:#725613;--button-text:#faf7ee}
     body{font-family:'Kanit',sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s;}
+    :where(button,a):focus-visible{outline:3px solid var(--gold-light);outline-offset:3px;}
     .grad-text{background:linear-gradient(135deg,var(--gold-light),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
     .hero-glow{background:radial-gradient(ellipse 60% 50% at 50% 0%,color-mix(in srgb,var(--gold) 18%,transparent),transparent)}
     .hero-title{color:#fff}:root[data-theme="light"] .hero-title{color:#111}
@@ -25,7 +27,7 @@
     .plan-card{position:relative;background:linear-gradient(160deg,var(--card),var(--input));border:1px solid var(--border-light);border-radius:1.25rem;padding:1.75rem;transition:transform .2s,border-color .2s}
     .plan-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--gold) 55%,var(--border-light))}
     .plan-card.is-popular{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 20px 40px -20px color-mix(in srgb,var(--gold) 60%,transparent)}
-    .popular-badge{position:absolute;top:-.7rem;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--bg);font-size:.65rem;font-weight:800;padding:.25rem .8rem;border-radius:999px;white-space:nowrap}
+    .popular-badge{position:absolute;top:-.7rem;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--button-text);font-size:.65rem;font-weight:800;padding:.25rem .8rem;border-radius:999px;white-space:nowrap}
     .effect-button{width:2.55rem;height:2.55rem;border-radius:.8rem;border:1px solid var(--border-light);background:var(--input);display:grid;place-items:center;transition:.2s}.effect-button:hover{border-color:var(--gold);transform:translateY(-1px)}
     @media (max-width:639px){.effect-button{width:2rem;height:2rem;border-radius:.6rem}.effect-button svg{width:1.05rem;height:1.05rem}}
     .snowflake{position:fixed;top:-2rem;z-index:50;color:#fff;pointer-events:none;text-shadow:0 0 6px #8bd5ff;animation:snow-fall linear forwards}@keyframes snow-fall{to{transform:translate3d(var(--drift),105vh,0) rotate(360deg);opacity:.1}}
@@ -40,7 +42,7 @@
         <% if (logoImage) { %>
           <img src="<%= logoImage %>" alt="โลโก้" class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-contain p-1 bg-gradient-to-br from-[var(--gold-light)] via-[var(--gold)] to-[var(--gold-dark)] border border-[var(--gold)]/50 shrink-0" style="mix-blend-mode: multiply;" />
         <% } else { %>
-          <span class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-[var(--gold-light)] to-[var(--gold-dark)] text-[var(--bg)] flex items-center justify-center shrink-0">🏪</span>
+          <span class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-[var(--gold-light)] to-[var(--gold-dark)] text-[var(--button-text)] flex items-center justify-center shrink-0">🏪</span>
         <% } %>
         <span class="truncate max-w-[6.5rem] sm:max-w-none"><%= shopName %></span>
       </a>
@@ -57,15 +59,15 @@
         <% if (isAdmin) { %>
           <a href="/my-shops" class="hidden sm:inline text-sm text-[var(--gold)]">ร้านของฉัน</a>
           <a href="/wallet" class="border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">💰 <span class="hidden sm:inline">เติมเงิน</span></a>
-          <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--bg)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
+          <a href="/admin" class="hidden sm:inline-block border border-[var(--gold)]/50 text-[var(--gold)] hover:bg-[var(--gold)] hover:text-[var(--button-text)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">🛠️ หลังบ้านแอดมิน</a>
           <a href="/admin" class="sm:hidden text-[var(--gold)] font-medium px-2.5 py-1.5 rounded-lg text-xs border border-[var(--gold)]/50">🛠️</a>
           <form action="/admin/logout?next=/" method="post" class="hidden sm:block"><button class="text-[var(--text-4)] hover:text-[var(--gold)] text-sm px-2">ออกจากระบบ</button></form>
         <% } else if (currentUser) { %>
           <a href="/wallet" class="border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">💰 <span class="hidden sm:inline">เติมเงิน</span></a>
-          <a href="/my-shops" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">ร้านของฉัน</a>
+          <a href="/my-shops" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">ร้านของฉัน</a>
         <% } else { %>
           <a href="/register" class="hidden sm:inline-block border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-4 py-2 rounded-lg text-sm transition-colors">สมัครสมาชิก</a>
-          <a href="/login" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">เข้าสู่ระบบ</a>
+          <a href="/login" class="bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm whitespace-nowrap">เข้าสู่ระบบ</a>
         <% } %>
       </div>
     </div>
@@ -92,7 +94,7 @@
         <%= heroSubtitle %>
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
-        <a href="#packages" class="w-full sm:w-auto text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold px-7 py-3 rounded-xl transition-transform hover:-translate-y-0.5">ดูแพ็กเกจทั้งหมด</a>
+        <a href="#packages" class="w-full sm:w-auto text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold px-7 py-3 rounded-xl transition-transform hover:-translate-y-0.5">ดูแพ็กเกจทั้งหมด</a>
         <a href="<%= currentUser ? '/my-shops' : '/login' %>" class="w-full sm:w-auto text-center bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)] font-medium px-7 py-3 rounded-xl transition-colors"><%= currentUser ? 'ไปหน้าร้านของฉัน' : 'เข้าสู่ระบบเพื่อเริ่มต้น' %></a>
       </div>
       <% if (!currentUser) { %>
@@ -173,7 +175,7 @@
               <li class="flex items-center gap-2">✅ ระบบครบ: สต็อก, กระเป๋าเงิน, มินิเกม, ตรวจสลิปอัตโนมัติ</li>
               <li class="flex items-center gap-2">✅ ติดตั้งพร้อมใช้งานทันที</li>
             </ul>
-            <a href="/start?plan=<%= plan.id %>" class="block text-center font-semibold px-5 py-3 rounded-xl transition-colors <%= isPopular ? 'bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)]' : 'bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)]' %>">เริ่มต้นใช้งาน</a>
+            <a href="/start?plan=<%= plan.id %>" class="block text-center font-semibold px-5 py-3 rounded-xl transition-colors <%= isPopular ? 'bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)]' : 'bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] hover:text-[var(--gold)]' %>">เริ่มต้นใช้งาน</a>
           </div>
         <% }) %>
       </div>

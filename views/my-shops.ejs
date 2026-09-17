@@ -52,19 +52,19 @@
             </div>
             <div class="grid grid-cols-2 gap-2 mb-3">
               <a href="<%= shop.url %>" target="_blank" rel="noopener" class="text-center border border-[var(--border-light)] hover:border-[var(--gold)] rounded-lg px-3 py-2 text-sm">เปิดหน้าร้าน</a>
-              <a href="<%= shop.url.replace(/\/$/, '') %>/admin" target="_blank" rel="noopener" class="text-center bg-[var(--gold)] text-[var(--bg)] rounded-lg px-3 py-2 text-sm font-semibold">เข้าหลังร้าน</a>
+              <a href="<%= shop.url.replace(/\/$/, '') %>/admin" target="_blank" rel="noopener" class="text-center bg-[var(--gold)] text-[var(--button-text)] rounded-lg px-3 py-2 text-sm font-semibold">เข้าหลังร้าน</a>
             </div>
             <form action="/my-shops/<%= shop.id %>/renew" method="post" class="flex gap-2">
               <select name="planId" required class="flex-1 min-w-0 bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2 text-sm">
                 <% plans.forEach(plan => { %><option value="<%= plan.id %>"><%= plan.days %> วัน — ฿<%= plan.price.toLocaleString() %></option><% }) %>
               </select>
-              <button class="shrink-0 bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg px-4 py-2 text-sm">ต่ออายุ</button>
+              <button class="shrink-0 bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold rounded-lg px-4 py-2 text-sm">ต่ออายุ</button>
             </form>
           </div>
         <% }) %>
       </div>
     <% } %>
-    <a href="/start" class="block text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--bg)] font-semibold rounded-lg py-2.5 text-sm">+ เปิดร้านใหม่</a>
+    <a href="/start" class="block text-center bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold rounded-lg py-2.5 text-sm">+ เปิดร้านใหม่</a>
   </section>
 
   <script>

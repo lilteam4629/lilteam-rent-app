@@ -23,7 +23,7 @@
 
     <form method="get" class="flex flex-wrap gap-2 mb-4">
       <% ['', 'pending', 'approved', 'rejected'].forEach(function (s) { %>
-        <a href="/admin/topups<%= s ? '?status=' + s : '' %>" class="px-3 py-1.5 rounded-lg text-xs font-medium <%= status === s ? 'bg-[var(--gold)] text-[var(--bg)]' : 'bg-[var(--input)] text-[var(--text-3)] hover:text-[var(--gold)]' %>"><%= s || 'ทั้งหมด' %></a>
+        <a href="/admin/topups<%= s ? '?status=' + s : '' %>" class="px-3 py-1.5 rounded-lg text-xs font-medium <%= status === s ? 'bg-[var(--gold)] text-[var(--button-text)]' : 'bg-[var(--input)] text-[var(--text-3)] hover:text-[var(--gold)]' %>"><%= s || 'ทั้งหมด' %></a>
       <% }) %>
       <input name="q" value="<%= q %>" placeholder="ค้นหา ชื่อ/อีเมล/รหัสอ้างอิง" class="flex-1 min-w-[160px] bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-1.5 text-xs" />
       <button class="bg-[var(--input)] border border-[var(--border-light)] hover:border-[var(--gold)] rounded-lg px-3 py-1.5 text-xs">ค้นหา</button>
