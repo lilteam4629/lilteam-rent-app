@@ -28,14 +28,18 @@ function urlFor(server) {
   const service = require('../services/truemoney');
   assert.strictEqual(service.extractVoucherCode('https://gift.truemoney.com/campaign/?v=abc_123'), 'abc_123');
   assert.strictEqual(service.normalizePhone('+66 80-123-4567'), '0801234567');
+  const uncertain = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=abc_123', '0801234567');
+  assert.strictEqual(uncertain.success, false);
+  assert.strictEqual(uncertain.code, 'PROVIDER_UNCERTAIN');
+  assert.strictEqual(calls, 1, 'a provider response must never trigger a second redemption attempt');
+  process.env.TRUEMONEY_API_PROVIDERS = urlFor(healthy);
   const result = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=abc_123', '0801234567');
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.amount, 12.5);
   assert.strictEqual(result.senderName, 'ผู้ทดสอบ');
-  assert.strictEqual(calls, 1, 'the first provider should be tried before the fallback');
   unavailable.close();
   healthy.close();
-  console.log('TrueMoney provider checks passed: legacy response parsing and outage failover');
+  console.log('TrueMoney provider checks passed: legacy response parsing and safe outage handling');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
