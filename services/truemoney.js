@@ -1,10 +1,8 @@
 /**
  * TrueMoney Angpao redemption with a safe provider selection.
  *
- * The legacy xpluem API is still supported because its
- * public contract is different from the newer providers:
- *   GET /<voucher-code>/<phone>
- *   { success: true, data: { amount, name } }
+ * The provider adapter follows the public truewallet.php contract published
+ * by code.xo.je (success/status/data, plus reason/name on failures/success).
  */
 const http = require('http');
 const https = require('https');
@@ -13,7 +11,6 @@ const DEFAULT_PROVIDERS = [
   'https://truemoney-voucher-go.vercel.app',
   'https://truemoney-voucher-nestjs.vercel.app',
   'https://truemoney-voucher-fastapi.vercel.app',
-  'https://api.xpluem.com',
 ];
 
 function providerBases() {
@@ -75,7 +72,7 @@ function responseStatus(payload) {
   const status = raw && typeof raw === 'object' ? raw : {};
   return {
     code: String(status.code || (typeof raw === 'string' ? raw : '') || payload?.code || (payload?.success === true ? 'SUCCESS' : '')).toUpperCase(),
-    message: String(status.message || payload?.message || '').trim(),
+    message: String(status.message || payload?.message || payload?.reason || '').trim(),
   };
 }
 
@@ -101,7 +98,7 @@ function amountFrom(payload) {
 
 function senderFrom(payload) {
   const data = responseData(payload);
-  return data.name || data.owner_profile?.full_name || data.my_ticket?.full_name || 'ไม่ระบุชื่อ';
+  return payload?.name || data.name || data.owner_profile?.full_name || data.my_ticket?.full_name || 'ไม่ระบุชื่อ';
 }
 
 function recipientMatches(payload, phone) {
@@ -137,9 +134,7 @@ function transient(code, statusCode) {
 }
 
 function redeemUrl(base, code, phone) {
-  const hostname = new URL(base).hostname.toLowerCase();
-  const prefix = hostname === 'api.xpluem.com' ? '' : '/truemoney';
-  return `${base}${prefix}/${encodeURIComponent(code)}/${encodeURIComponent(phone)}`;
+  return `${base}/truemoney/${encodeURIComponent(code)}/${encodeURIComponent(phone)}`;
 }
 
 async function redeemAngpao(voucherInput, receiverPhone, options = {}) {

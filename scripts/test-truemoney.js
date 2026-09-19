@@ -22,7 +22,7 @@ function urlFor(server) {
   });
   const healthy = await serverFor((req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ success: true, status: 200, message: 'รับเงินสำเร็จ', data: { amount: '12.50', name: 'ผู้ทดสอบ' } }));
+    res.end(JSON.stringify({ success: true, status: 200, message: 'รับเงินสำเร็จ', name: 'ผู้ทดสอบ', data: { amount: '12.50' } }));
   });
   process.env.TRUEMONEY_API_PROVIDERS = `${urlFor(unavailable)},${urlFor(healthy)}`;
   const service = require('../services/truemoney');
@@ -39,7 +39,7 @@ function urlFor(server) {
   assert.strictEqual(result.senderName, 'ผู้ทดสอบ');
   const consumed = await serverFor((req, res) => {
     res.writeHead(400, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ status: 400, message: 'ลิงก์ซองของขวัญถูกใช้งานแล้ว', data: null }));
+    res.end(JSON.stringify({ success: false, status: 'FAIL', reason: 'ลิงก์ซองของขวัญถูกใช้งานแล้ว', data: null }));
   });
   process.env.TRUEMONEY_API_PROVIDERS = urlFor(consumed);
   const uncertainConsumed = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=consumed-test', '0801234567');
