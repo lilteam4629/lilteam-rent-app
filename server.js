@@ -521,10 +521,23 @@ app.get('/wallet', requireLogin, async (req, res) => {
 });
 
 app.post('/account/topup/truemoney', requireLogin, async (req, res) => {
-  const result = await walletService.redeem(req.session.userId, req.body.voucherLink);
-  if (!result.ok) { req.flash('error', result.error || 'เติมเงินไม่สำเร็จ'); return res.redirect('/wallet'); }
-  await refreshSessionUser(req); req.flash('success', `🧧 เติมเงินสำเร็จ ฿${Number(result.item.amount).toLocaleString()}`);
-  res.redirect('/account/topup/' + encodeURIComponent(result.item.id));
+  try {
+    const result = await walletService.redeem(req.session.userId, req.body.voucherLink);
+    if (!result.ok) {
+      req.flash('error', result.error || 'เติมเงินไม่สำเร็จ');
+      return res.redirect('/wallet');
+    }
+    await refreshSessionUser(req);
+    req.flash('success', `${result.recovered ? 'กู้คืนรายการเติมเงินสำเร็จ' : 'เติมเงินสำเร็จ'} ฿${Number(result.item.amount).toLocaleString()}`);
+    return res.redirect('/account/topup/' + encodeURIComponent(result.item.id));
+  } catch (error) {
+    // A provider can consume a voucher before a local disk/database write
+    // finishes. Never show a generic 500 after that point; the redemption
+    // claim is retained and the same link can be retried idempotently.
+    console.error('[TrueMoney topup route]', error);
+    req.flash('error', 'ระบบรับซองแล้ว แต่กำลังบันทึกยอด กรุณาส่งลิงก์เดิมอีกครั้ง ระบบจะไม่หักซ้ำ');
+    return res.redirect('/wallet');
+  }
 });
 app.post('/account/topup', requireLogin, async (req, res) => {
   const result = await walletService.create(req.session.userId,req.body.amount,req.body.method||'bank_transfer');

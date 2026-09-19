@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "build:css": "tailwindcss -i ./public/css/tailwind.source.css -o ./public/css/tailwind.generated.css --minify",
-    "test": "node scripts/smoke-server.js",
+    "test": "node scripts/smoke-server.js && node scripts/test-truemoney.js && node scripts/test-wallet-truemoney.js",
     "start": "node server.js",
     "dev": "node server.js"
   },

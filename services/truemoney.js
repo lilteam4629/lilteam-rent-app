@@ -1,128 +1,176 @@
 /**
- * TrueMoney Angpao (Gift Voucher) Redemption Service
- * Uses https://api.xpluem.com/:link/:phone
+ * TrueMoney Angpao redemption with provider failover.
+ *
+ * The legacy xpluem API is still supported as the last provider because its
+ * public contract is different from the newer providers:
+ *   GET /<voucher-code>/<phone>
+ *   { success: true, data: { amount, name } }
  */
-const https = require('https');
 const http = require('http');
+const https = require('https');
 
-/**
- * Extracts voucher code from various formats:
- * - Full URL: https://gift.truemoney.com/campaign/?v=3857329582739485739
- * - Query format: ?v=3857329582739485739
- * - Raw voucher hash: 3857329582739485739
- */
+const DEFAULT_PROVIDERS = [
+  'https://truemoney-voucher-go.vercel.app',
+  'https://truemoney-voucher-nestjs.vercel.app',
+  'https://truemoney-voucher-fastapi.vercel.app',
+  'https://api.xpluem.com',
+];
+
+function providerBases() {
+  const list = String(process.env.TRUEMONEY_API_PROVIDERS || '')
+    .split(',').map(value => value.trim().replace(/\/+$/, '')).filter(Boolean);
+  if (list.length) return [...new Set(list)];
+  const configured = String(process.env.TRUEMONEY_API_BASE_URL || '').trim().replace(/\/+$/, '');
+  return [...new Set([configured, ...DEFAULT_PROVIDERS].filter(Boolean))];
+}
+
 function extractVoucherCode(input) {
   if (!input) return '';
   const trimmed = String(input).trim();
-  const match = trimmed.match(/[?&]v=([a-zA-Z0-9_-]+)/);
-  if (match) return match[1];
-  const urlMatch = trimmed.match(/campaign\/([a-zA-Z0-9_-]+)/);
-  if (urlMatch) return urlMatch[1];
-  // If it's already a clean alphanumeric voucher code
+  const query = trimmed.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+  if (query) return query[1];
+  const path = trimmed.match(/campaign\/(?:\?v=)?([a-zA-Z0-9_-]+)/);
+  if (path) return path[1];
   return trimmed.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
-/**
- * Normalizes Thai phone number to 10 digits (e.g. 0801234567)
- */
 function normalizePhone(phone) {
   if (!phone) return '';
   let digits = String(phone).replace(/[^0-9]/g, '');
-  if (digits.startsWith('66') && digits.length === 11) {
-    digits = '0' + digits.slice(2);
-  }
+  if (digits.startsWith('66') && digits.length === 11) digits = `0${digits.slice(2)}`;
   return digits;
 }
 
-/**
- * Redeems a TrueMoney gift voucher link using receiver phone number
- * @param {string} voucherInput - Full link or voucher hash
- * @param {string} receiverPhone - 10-digit TrueMoney wallet phone number
- * @returns {Promise<{ success: boolean, amount: number, message: string, senderName?: string, raw?: any }>}
- */
+function requestJson(url, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const transport = parsed.protocol === 'http:' ? http : https;
+    const req = transport.request({
+      hostname: parsed.hostname,
+      port: parsed.port || (parsed.protocol === 'http:' ? 80 : 443),
+      path: parsed.pathname + parsed.search,
+      method: 'GET',
+      headers: { 'User-Agent': 'LilTeamShop-TrueMoneyClient/2.0', Accept: 'application/json' },
+      timeout: timeoutMs,
+    }, res => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { body += chunk; });
+      res.on('end', () => {
+        let payload;
+        try { payload = JSON.parse(body); } catch (_) {
+          return reject(new Error(`รูปแบบข้อมูลตอบกลับจากระบบไม่ถูกต้อง (HTTP ${res.statusCode || 0})`));
+        }
+        resolve({ statusCode: res.statusCode || 0, payload });
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา')));
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function responseStatus(payload) {
+  const raw = payload?.status;
+  const status = raw && typeof raw === 'object' ? raw : {};
+  return {
+    code: String(status.code || (typeof raw === 'string' ? raw : '') || payload?.code || (payload?.success === true ? 'SUCCESS' : '')).toUpperCase(),
+    message: String(status.message || payload?.message || '').trim(),
+  };
+}
+
+function responseData(payload) {
+  if (payload?.data && typeof payload.data === 'object') return payload.data;
+  if (payload?.status?.data && typeof payload.status.data === 'object') return payload.status.data;
+  if (payload?.result?.data && typeof payload.result.data === 'object') return payload.result.data;
+  return {};
+}
+
+function amountFrom(payload) {
+  const data = responseData(payload);
+  const ticket = data.my_ticket || data.ticket || {};
+  const voucher = data.voucher || {};
+  const candidates = [payload?.amount, data.amount, ticket.amount_baht, ticket.amount,
+    voucher.redeemed_amount_baht, voucher.amount_baht];
+  for (const candidate of candidates) {
+    const amount = Number.parseFloat(String(candidate ?? '').replace(/,/g, ''));
+    if (Number.isFinite(amount) && amount > 0) return amount;
+  }
+  return 0;
+}
+
+function senderFrom(payload) {
+  const data = responseData(payload);
+  return data.name || data.owner_profile?.full_name || data.my_ticket?.full_name || 'ไม่ระบุชื่อ';
+}
+
+function recipientMatches(payload, phone) {
+  const data = responseData(payload);
+  const values = [data.my_ticket?.mobile, data.my_ticket?.mobile_number,
+    data.redeemer_profile?.mobile, data.redeemer_profile?.mobile_number]
+    .map(normalizePhone).filter(Boolean);
+  if (!values.length) return true;
+  return values.some(value => value === phone || (value.length >= 4 && phone.slice(-4) === value.slice(-4)));
+}
+
+function errorMessage(code, fallback = '') {
+  const messages = {
+    VOUCHER_NOT_FOUND: 'ไม่พบซองของขวัญนี้ กรุณาตรวจสอบลิงก์อีกครั้ง',
+    VOUCHER_OUT_OF_STOCK: 'ซองของขวัญนี้ถูกใช้หมดแล้ว',
+    VOUCHER_EXPIRED: 'ซองของขวัญนี้หมดอายุแล้ว',
+    TARGET_USER_REDEEMED: 'เบอร์รับเงินนี้เคยรับซองของขวัญนี้ไปแล้ว',
+    TARGET_USER_NOT_FOUND: 'ไม่พบเบอร์ TrueMoney ของร้านในระบบ',
+    TARGET_USER_STATUS_INACTIVE: 'บัญชี TrueMoney ของร้านไม่พร้อมรับเงิน',
+    CANNOT_GET_OWN_VOUCHER: 'ไม่สามารถรับซองที่สร้างจากบัญชีเดียวกันได้',
+    MAINTENANCE: 'ระบบ TrueMoney อยู่ระหว่างปรับปรุง กรุณาลองใหม่ภายหลัง',
+  };
+  return messages[code] || fallback || 'ไม่สามารถรับเงินจากซองของขวัญนี้ได้';
+}
+
+function transient(code, statusCode) {
+  return Number(statusCode) >= 500 || ['500', 'INTERNAL_ERROR', 'MAINTENANCE', 'SERVICE_UNAVAILABLE', 'UPSTREAM_ERROR'].includes(String(code || '').toUpperCase());
+}
+
+function redeemUrl(base, code, phone) {
+  const hostname = new URL(base).hostname.toLowerCase();
+  const prefix = hostname === 'api.xpluem.com' ? '' : '/truemoney';
+  return `${base}${prefix}/${encodeURIComponent(code)}/${encodeURIComponent(phone)}`;
+}
+
 async function redeemAngpao(voucherInput, receiverPhone) {
   const voucherCode = extractVoucherCode(voucherInput);
   const phone = normalizePhone(receiverPhone);
+  if (!voucherCode) return { success: false, amount: 0, code: 'INVALID_VOUCHER', message: 'ลิงก์ซองของขวัญไม่ถูกต้อง' };
+  if (!/^0\d{9}$/.test(phone)) return { success: false, amount: 0, code: 'INVALID_PHONE', message: 'เบอร์รับเงิน TrueMoney ไม่ถูกต้อง (ต้องเป็นเบอร์ 10 หลัก)' };
 
-  if (!voucherCode) {
-    return { success: false, amount: 0, message: 'ลิงก์ซองของขวัญไม่ถูกต้อง' };
-  }
-
-  if (!phone || phone.length !== 10) {
-    return { success: false, amount: 0, message: 'เบอร์รับเงิน TrueMoney ไม่ถูกต้อง (ต้องเป็นเบอร์ 10 หลัก)' };
-  }
-
-  const targetUrl = `https://api.xpluem.com/${encodeURIComponent(voucherCode)}/${encodeURIComponent(phone)}`;
-
-  try {
-    const data = await new Promise((resolve, reject) => {
-      const parsedUrl = new URL(targetUrl);
-      const req = https.request({
-        hostname: parsedUrl.hostname,
-        port: 443,
-        path: parsedUrl.pathname + parsedUrl.search,
-        method: 'GET',
-        headers: {
-          'User-Agent': 'LilTeamShop-TrueMoneyClient/1.0',
-          'Accept': 'application/json',
-        },
-        timeout: 15000,
-      }, (res) => {
-        let body = '';
-        res.on('data', chunk => body += chunk);
-        res.on('end', () => {
-          try {
-            const json = JSON.parse(body);
-            resolve(json);
-          } catch (e) {
-            resolve({ success: false, message: 'รูปแบบข้อมูลตอบกลับจากระบบไม่ถูกต้อง', raw: body });
-          }
-        });
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-        resolve({ success: false, message: 'การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา (Timeout) กรุณาลองใหม่อีกครั้ง' });
-      });
-
-      req.on('error', (err) => {
-        resolve({ success: false, message: `เกิดข้อผิดพลาดในการเชื่อมต่อ: ${err.message}` });
-      });
-
-      req.end();
-    });
-
-    if (data && data.success && data.data && data.data.amount) {
-      const amount = parseFloat(data.data.amount);
-      if (!Number.isFinite(amount) || amount <= 0) {
-        return { success: false, amount: 0, message: 'จำนวนเงินในซองไม่ถูกต้อง' };
+  let lastError = null;
+  for (const base of providerBases()) {
+    try {
+      const response = await requestJson(redeemUrl(base, voucherCode, phone));
+      const { code, message } = responseStatus(response.payload);
+      const hasKnownEnvelope = Boolean(code || response.payload?.status || response.payload?.success === false);
+      if (!hasKnownEnvelope) {
+        lastError = new Error('รูปแบบข้อมูลตอบกลับจากระบบไม่ถูกต้อง');
+        continue;
       }
-      return {
-        success: true,
-        amount,
-        senderName: data.data.name || 'ไม่ระบุชื่อ',
-        message: data.message || 'รับเงินสำเร็จ',
-        raw: data,
-      };
+      const amount = amountFrom(response.payload);
+      const recovered = code === 'TARGET_USER_REDEEMED' && amount > 0 && recipientMatches(response.payload, phone);
+      if ((code === 'SUCCESS' || response.payload?.success === true || recovered) && amount > 0) {
+        return { success: true, recovered, amount, code: code || 'SUCCESS', senderName: senderFrom(response.payload), message: message || (recovered ? 'กู้คืนรายการรับเงินสำเร็จ' : 'รับเงินสำเร็จ'), raw: response.payload };
+      }
+      if (transient(code, response.statusCode)) {
+        lastError = new Error(errorMessage(code, message));
+        continue;
+      }
+      return { success: false, amount: 0, code, message: errorMessage(code, message), raw: response.payload };
+    } catch (error) {
+      lastError = error;
     }
-
-    return {
-      success: false,
-      amount: 0,
-      message: data.message || 'ไม่สามารถรับเงินจากซองของขวัญนี้ได้',
-      raw: data,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      amount: 0,
-      message: `เกิดข้อผิดพลาด: ${err.message}`,
-    };
   }
+
+  const text = String(lastError?.message || '');
+  if (/หมดเวลา|timeout/i.test(text)) return { success: false, amount: 0, code: 'NETWORK_TIMEOUT', message: 'การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา กรุณาลองใหม่อีกครั้ง' };
+  return { success: false, amount: 0, code: 'PROVIDER_UNAVAILABLE', message: 'ระบบ TrueMoney ยังไม่พร้อมให้ตรวจสอบ กรุณาลองใหม่อีกครั้ง' };
 }
 
-module.exports = {
-  extractVoucherCode,
-  normalizePhone,
-  redeemAngpao,
-};
+module.exports = { extractVoucherCode, normalizePhone, redeemAngpao, providerBases };
