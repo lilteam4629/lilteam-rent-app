@@ -29,6 +29,14 @@ process.env.DATA_DIR = tempData;
   assert.strictEqual(store.data.users[0].walletBalance, 25);
   assert.strictEqual(store.data.walletTransactions.filter(item => item.voucherCode === 'idempotent-test').length, 1);
   assert.strictEqual(store.data.topups.filter(item => item.voucherCode === 'idempotent-test').length, 1);
+  store.data.truemoneyRedemptions.push({ id: 'claim-ready', voucherCode: 'recovery-test', userId: 'user-a', status: 'ready', amount: 12, senderName: 'ผู้ทดสอบ' });
+  store.save();
+  truemoney.redeemAngpao = async () => { throw new Error('provider must not be called for a journaled claim'); };
+  const recovered = await wallet.redeem('user-a', 'https://gift.truemoney.com/campaign/?v=recovery-test');
+  assert.strictEqual(recovered.ok, true);
+  assert.strictEqual(recovered.recovered, true);
+  assert.strictEqual(store.data.users[0].walletBalance, 37);
+  assert.strictEqual(store.data.walletTransactions.filter(item => item.voucherCode === 'recovery-test').length, 1);
   console.log('TrueMoney wallet checks passed: durable claim and idempotent credit');
 })().catch(error => {
   console.error(error);
