@@ -150,7 +150,9 @@ async function redeemAngpao(voucherInput, receiverPhone, options = {}) {
 
   const base = String(options.providerBase || providerBases()[0] || '').trim().replace(/\/+$/, '');
   if (!base) return { success: false, amount: 0, code: 'PROVIDER_UNAVAILABLE', recoverable: true, message: 'ระบบ TrueMoney ยังไม่พร้อมให้ตรวจสอบ กรุณาลองใหม่อีกครั้ง' };
-  try {
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
     const response = await requestJson(redeemUrl(base, voucherCode, phone));
     const { code, message } = responseStatus(response.payload);
     const hasKnownEnvelope = Boolean(code || response.payload?.status || response.payload?.success === false);
@@ -164,16 +166,22 @@ async function redeemAngpao(voucherInput, receiverPhone, options = {}) {
     }
     const redemptionCodes = ['SUCCESS', 'TARGET_USER_REDEEMED', 'VOUCHER_OUT_OF_STOCK', 'VOUCHER_ALREADY_USED', 'VOUCHER_REDEEMED'];
     if ((redemptionCodes.includes(code) || looksConsumed) && amount <= 0) {
+      if (attempt === 0) { await new Promise(resolve => setTimeout(resolve, 350)); continue; }
       return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'ระบบรับคำขอซองแล้วแต่ยังไม่ส่งยอดกลับมา กรุณาลองลิงก์เดิมอีกครั้ง', raw: response.payload, providerBase: base };
     }
     if (transient(code, response.statusCode)) {
+      if (attempt === 0) { await new Promise(resolve => setTimeout(resolve, 350)); continue; }
       return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'ระบบ TrueMoney ตอบกลับผิดพลาดหลังส่งคำขอแล้ว กรุณาลองลิงก์เดิมอีกครั้ง ระบบจะไม่ยิงซ้ำข้าม provider', raw: response.payload, providerBase: base };
     }
     return { success: false, amount: 0, code, recoverable: looksConsumed, message: errorMessage(code, message), raw: response.payload, providerBase: base };
-  } catch (error) {
-    const text = String(error?.message || '');
-    return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: /หมดเวลา|timeout/i.test(text) ? 'การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา กรุณาลองลิงก์เดิมอีกครั้ง' : 'ระบบ TrueMoney ไม่ตอบสนอง กรุณาลองลิงก์เดิมอีกครั้ง', error: text, providerBase: base };
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) { await new Promise(resolve => setTimeout(resolve, 350)); continue; }
+      const text = String(lastError?.message || '');
+      return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: /หมดเวลา|timeout/i.test(text) ? 'การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา กรุณาลองลิงก์เดิมอีกครั้ง' : 'ระบบ TrueMoney ไม่ตอบสนอง กรุณาลองลิงก์เดิมอีกครั้ง', error: text, providerBase: base };
+    }
   }
+  return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'ระบบ TrueMoney ยังไม่พร้อม กรุณาลองลิงก์เดิมอีกครั้ง', providerBase: base };
 }
 
 module.exports = { extractVoucherCode, normalizePhone, redeemAngpao, providerBases };

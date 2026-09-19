@@ -31,7 +31,7 @@ function urlFor(server) {
   const uncertain = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=abc_123', '0801234567');
   assert.strictEqual(uncertain.success, false);
   assert.strictEqual(uncertain.code, 'PROVIDER_UNCERTAIN');
-  assert.strictEqual(calls, 1, 'a provider response must never trigger a second redemption attempt');
+  assert.strictEqual(calls, 2, 'a provider may be retried once, but never replaced by a second provider');
   process.env.TRUEMONEY_API_PROVIDERS = urlFor(healthy);
   const result = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=abc_123', '0801234567');
   assert.strictEqual(result.success, true);
