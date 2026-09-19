@@ -37,8 +37,17 @@ function urlFor(server) {
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.amount, 12.5);
   assert.strictEqual(result.senderName, 'ผู้ทดสอบ');
+  const consumed = await serverFor((req, res) => {
+    res.writeHead(400, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ status: 400, message: 'ลิงก์ซองของขวัญถูกใช้งานแล้ว', data: null }));
+  });
+  process.env.TRUEMONEY_API_PROVIDERS = urlFor(consumed);
+  const uncertainConsumed = await service.redeemAngpao('https://gift.truemoney.com/campaign/?v=consumed-test', '0801234567');
+  assert.strictEqual(uncertainConsumed.code, 'PROVIDER_UNCERTAIN');
+  assert.strictEqual(uncertainConsumed.recoverable, true);
   unavailable.close();
   healthy.close();
+  consumed.close();
   console.log('TrueMoney provider checks passed: legacy response parsing and safe outage handling');
 })().catch(error => {
   console.error(error);

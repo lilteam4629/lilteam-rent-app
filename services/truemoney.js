@@ -120,6 +120,8 @@ function errorMessage(code, fallback = '') {
     VOUCHER_OUT_OF_STOCK: 'ซองของขวัญนี้ถูกใช้หมดแล้ว',
     VOUCHER_ALREADY_USED: 'ซองของขวัญนี้ถูกใช้แล้ว',
     VOUCHER_REDEEMED: 'ซองของขวัญนี้ถูกใช้แล้ว',
+    VOUCHER_USED: 'ซองของขวัญนี้ถูกใช้แล้ว',
+    ALREADY_REDEEMED: 'ซองของขวัญนี้ถูกใช้แล้ว',
     VOUCHER_EXPIRED: 'ซองของขวัญนี้หมดอายุแล้ว',
     TARGET_USER_REDEEMED: 'เบอร์รับเงินนี้เคยรับซองของขวัญนี้ไปแล้ว',
     TARGET_USER_NOT_FOUND: 'ไม่พบเบอร์ TrueMoney ของร้านในระบบ',
@@ -154,19 +156,20 @@ async function redeemAngpao(voucherInput, receiverPhone, options = {}) {
     const hasKnownEnvelope = Boolean(code || response.payload?.status || response.payload?.success === false);
     if (!hasKnownEnvelope) return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'รูปแบบข้อมูลตอบกลับจากระบบไม่ถูกต้อง กรุณาลองลิงก์เดิมอีกครั้ง', raw: response.payload, providerBase: base };
     const amount = amountFrom(response.payload);
-    const recoveredCodes = ['TARGET_USER_REDEEMED', 'VOUCHER_OUT_OF_STOCK', 'VOUCHER_ALREADY_USED', 'VOUCHER_REDEEMED'];
-    const recovered = recoveredCodes.includes(code) && amount > 0 && recipientMatches(response.payload, phone);
+    const recoveredCodes = ['TARGET_USER_REDEEMED', 'VOUCHER_OUT_OF_STOCK', 'VOUCHER_ALREADY_USED', 'VOUCHER_REDEEMED', 'VOUCHER_USED', 'ALREADY_REDEEMED'];
+    const looksConsumed = recoveredCodes.includes(code) || /ถูกใช้|ใช้งานแล้ว|รับแล้ว|already\s*(used|redeemed)|redeemed/i.test(message);
+    const recovered = looksConsumed && amount > 0 && recipientMatches(response.payload, phone);
     if ((code === 'SUCCESS' || response.payload?.success === true || recovered) && amount > 0) {
       return { success: true, recovered, amount, code: code || 'SUCCESS', senderName: senderFrom(response.payload), message: message || (recovered ? 'กู้คืนรายการรับเงินสำเร็จ' : 'รับเงินสำเร็จ'), raw: response.payload, providerBase: base };
     }
     const redemptionCodes = ['SUCCESS', 'TARGET_USER_REDEEMED', 'VOUCHER_OUT_OF_STOCK', 'VOUCHER_ALREADY_USED', 'VOUCHER_REDEEMED'];
-    if (redemptionCodes.includes(code) && amount <= 0) {
+    if ((redemptionCodes.includes(code) || looksConsumed) && amount <= 0) {
       return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'ระบบรับคำขอซองแล้วแต่ยังไม่ส่งยอดกลับมา กรุณาลองลิงก์เดิมอีกครั้ง', raw: response.payload, providerBase: base };
     }
     if (transient(code, response.statusCode)) {
       return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: 'ระบบ TrueMoney ตอบกลับผิดพลาดหลังส่งคำขอแล้ว กรุณาลองลิงก์เดิมอีกครั้ง ระบบจะไม่ยิงซ้ำข้าม provider', raw: response.payload, providerBase: base };
     }
-    return { success: false, amount: 0, code, recoverable: ['TARGET_USER_REDEEMED', 'VOUCHER_OUT_OF_STOCK', 'VOUCHER_ALREADY_USED', 'VOUCHER_REDEEMED'].includes(code), message: errorMessage(code, message), raw: response.payload, providerBase: base };
+    return { success: false, amount: 0, code, recoverable: looksConsumed, message: errorMessage(code, message), raw: response.payload, providerBase: base };
   } catch (error) {
     const text = String(error?.message || '');
     return { success: false, amount: 0, code: 'PROVIDER_UNCERTAIN', recoverable: true, message: /หมดเวลา|timeout/i.test(text) ? 'การเชื่อมต่อไปยังระบบ TrueMoney หมดเวลา กรุณาลองลิงก์เดิมอีกครั้ง' : 'ระบบ TrueMoney ไม่ตอบสนอง กรุณาลองลิงก์เดิมอีกครั้ง', error: text, providerBase: base };
