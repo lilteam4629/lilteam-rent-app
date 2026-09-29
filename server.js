@@ -555,7 +555,7 @@ app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (
   res.redirect('/account/topup/' + encodeURIComponent(req.params.id));
 });
 app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
-  const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);res.status(request?200:404).json(request?{status:request.status,slipCheck:request.slipCheck}:{error:'not found'});
+  const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);res.status(request?200:404).json(request?{status:request.status,finished:request.status!=='verifying',slipCheck:request.slipCheck}:{error:'not found'});
 });
 app.get('/account/topup/:id/slip-file', requireLogin, async (req, res, next) => {
   try {const item=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));}catch(error){next(error)}
