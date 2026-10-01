@@ -23,6 +23,7 @@ let child, browser;
   await new Promise(resolve => mock.listen(0, '127.0.0.1', resolve));
   const upstream = `http://127.0.0.1:${mock.address().port}`;
   fs.writeFileSync(path.join(fixture, 'cloud-data.json'), JSON.stringify({ users: [{ id: 'demo-user', username: 'demo', email: 'demo@example.test', passwordHash: await require('bcryptjs').hash('fixture-only', 4), walletBalance: 999, status: 'active' }] }));
+  fs.writeFileSync(path.join(fixture, 'settings.json'), JSON.stringify({ showcaseImages: ['/images/showcase/home.jpg', '/images/showcase/product.jpg', '/images/showcase/catalog.jpg', '/images/showcase/stock.jpg'] }));
   child = spawn(process.execPath, ['server.js'], { cwd: root, env: { ...process.env, PORT: '3298', NODE_ENV: 'test', DATA_DIR: fixture, MAIN_API_BASE_URL: upstream, MAIN_SITE_URL: upstream, ADMIN_USERNAME: 'fixture-admin', ADMIN_PASSWORD: 'fixture-only', SESSION_SECRET: 'isolated-browser-fixture-session-only' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; child.stderr.on('data', chunk => log += chunk);
   for (let i = 0; i < 60; i++) { try { if ((await fetch('http://127.0.0.1:3298/health')).ok) break; } catch {} await new Promise(r => setTimeout(r, 200)); }
@@ -38,6 +39,18 @@ let child, browser;
   }
   await visit('/');
   assert.equal(await page.locator('[data-screen-tab]').count(), 7);
+  async function heroDoesNotOverlap() {
+    await page.waitForTimeout(1100);
+    const title = await page.locator('.cloud-stage-word').boundingBox();
+    const image = await page.locator('.hero-browser').boundingBox();
+    assert(title.y + title.height < image.y, 'Hero image must not overlap YOUR STORE');
+  }
+  await heroDoesNotOverlap();
+  await page.locator('.cloud-extra-gallery').scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => [...document.querySelectorAll('.cloud-extra-gallery img')].every(img => img.complete && img.naturalWidth > 0));
+  assert(await page.locator('.cloud-extra-gallery img').evaluateAll(images => images.every(img => Math.abs(img.clientWidth / img.clientHeight - img.naturalWidth / img.naturalHeight) < .02)), 'Additional images must keep their full original proportions');
+  await page.locator('.cloud-extra-gallery').screenshot({ path: path.join(output, 'gallery-full-images.png') });
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: path.join(output, 'home-desktop.png'), fullPage: true });
   await page.screenshot({ path: path.join(output, 'home-preview.png') });
   await page.locator('[data-screen-tab]').nth(3).click();
@@ -65,6 +78,7 @@ let child, browser;
   await page.locator('[data-cloud-admin-menu]').click(); assert.equal(await page.locator('[data-cloud-admin-menu]').getAttribute('aria-expanded'), 'true');
   for (const route of ['/', '/my-shops', '/start', '/wallet', '/admin', '/admin/plans', '/admin/rentals', '/admin/topups', '/admin/users', '/admin/payment']) {
     await visit(route);
+    if (route === '/') await heroDoesNotOverlap();
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), route + ' overflows mobile viewport');
   }
   await visit('/'); await page.screenshot({ path: path.join(output, 'home-mobile.png'), fullPage: true });
