@@ -9,6 +9,9 @@ process.env.DATA_DIR = tempData;
 (async () => {
   const store = require('../lib/cloud-store');
   const truemoney = require('../services/truemoney');
+  const mainApi = require('../lib/mainApi');
+  mainApi.sharedPaymentHistory = async () => ({ ok: true, body: { conflicts: [] } });
+  mainApi.sharedTrueMoney = async (_, input) => ({ ok: true, body: { result: await truemoney.redeemAngpao(input) } });
   const wallet = require('../lib/wallet');
   store.data.users = [{ id: 'user-a', username: 'tester', status: 'active', walletBalance: 0 }];
   store.data.payment.truemoneyEnabled = true;

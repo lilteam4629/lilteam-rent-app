@@ -1,0 +1,13 @@
+# Shared payment repair
+
+Root cause confirmed in code: Cloud kept a one-time copied payment configuration, did not support XEPHT or the main SlipCheck key pool, and redeemed vouchers independently. Its receipt flash message also claimed verification finished without checking approval.
+
+The main service now exposes secret-protected /internal/api/payments/config, /payments/slip, /payments/truemoney and /payments/history. Main storefront and Cloud share the same slip verification module. Provider keys remain in the main service. Cloud displays current receiver details and delegates provider calls. Successful slips are claimed by source/request before Cloud credit; voucher ownership is reserved centrally before redemption. Main wallets are not credited by these endpoints. Every Cloud credit has an idempotent transaction marker.
+
+Claims persist in the existing configured datastore; no database engine migration or MongoDB setup is introduced. Local JSON slip claims now retain source/request ownership for safe retries. Legacy main approved receipts/vouchers are considered. Existing accepted Cloud voucher history is synchronized to the central ownership journal; conflicting historical records are withheld for review rather than credited again. Manual receipt approvals require a transaction reference and cannot bypass the duplicate ledger. Uncertain voucher results are pinned to one provider and resumed by Cloud recovery.
+
+Executed coverage: isolated real main + Cloud implementations with stubbed providers test provider configuration changes, absence of secret leakage, receipt and voucher reuse in both directions, simultaneous voucher owners, manual duplicate rejection, cached successful receipt retries, local write failure after provider acceptance, and recovery without a second redemption. Rental npm test passes security, wallet safety, uploads, template rendering and TrueMoney durability. Main focused tests pass receiver matching, provider safety, TrueMoney recovery, partner wallet routing, local atomic transactions and security.
+
+Browser coverage executes rental wallet and owner payment pages on desktop and mobile alongside existing navigation. Production probes confirm both gateway versions and the Cloud-to-main configuration connection without consuming a live voucher or submitting customer funds.
+
+Baseline CSS budget failure was reproduced with original main sources (9 stylesheets vs budget 8). Upstream independently fixed it in 414f7f8; this payment release was rebased onto that update. The final main smoke test now passes storefront assets and 45 admin pages.

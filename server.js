@@ -49,7 +49,16 @@ app.use(compression({ threshold: 1024 }));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.get('/health', (req,res)=>res.status(200).json({ok:true,version:'1.0.0',uptime:Math.floor(process.uptime())}));
+app.get('/health', (req,res)=>res.status(200).json({ok:true,version:'1.0.0',sharedPaymentGatewayVersion:1,uptime:Math.floor(process.uptime())}));
+let paymentProbe, paymentProbeUntil = 0;
+app.get('/health/payment', async (req, res) => {
+  if (!paymentProbe || Date.now() > paymentProbeUntil) {
+    paymentProbeUntil = Date.now() + 10000;
+    paymentProbe = paymentService.configuration();
+  }
+  const payment = await paymentProbe;
+  res.set('Cache-Control', 'no-store').status(payment.unavailable ? 503 : 200).json({ ok: !payment.unavailable, sharedPaymentGatewayVersion: 1, slipReady: Boolean(payment.automaticSlipCheck), trueMoneyReady: Boolean(payment.truemoneyEnabled), provider: payment.slipProvider || null });
+});
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 2000 }));
 const staticMaxAge = process.env.NODE_ENV === 'production' ? '7d' : 0;
@@ -113,14 +122,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 const DEFAULT_HERO_TITLE = 'เปิดร้านค้าออนไลน์ของคุณ\nใน 1 นาที';
 const DEFAULT_HERO_SUBTITLE = 'เช่าเว็บร้านค้าพร้อมระบบขายอัตโนมัติ จัดการสต็อก กระเป๋าเงิน มินิเกมลุ้นรางวัล และตรวจสลิปอัตโนมัติ 24 ชั่วโมง — ติดตั้งพร้อมใช้งานทันทีหลังชำระเงิน ไม่ต้องเขียนโค้ดสักบรรทัด';
 const DISCORD_INVITE_URL = process.env.DISCORD_INVITE_URL || 'https://discord.gg/DfYgGzs3BK';
-
-async function importLegacyPaymentOnce(){
-  const p=cloudStore.payment();if(Number(p.legacyPaymentImportVersion||0)>=5)return;
-  const result=await mainApi.legacyPaymentConfig();if(!result.ok||!result.body.payment)return;
-  const allowed=['slipProvider','easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','promptpayQrImage','bankName','bankAccountNumber','bankAccountName','bankQrImage','truemoneyPhone'];
-  for(const key of allowed)p[key]=result.body.payment[key]||'';
-  if(!paymentService.PROVIDERS.has(p.slipProvider))p.slipProvider='easyslip';p.truemoneyEnabled=result.body.payment.truemoneyEnabled===true;p.truemoneyImported=true;p.legacyPaymentImported=true;p.legacyPaymentImportVersion=5;cloudStore.save();
-}
 
 function currentShopName() {
   return settings.get().shopName || DEFAULT_SHOP_NAME;
@@ -361,13 +362,9 @@ app.get('/admin/users', requireAdmin, async (req, res) => {
 app.post('/admin/users/:id/balance',requireAdmin,async(req,res)=>{const newBalance=Number(req.body.amount);if(!Number.isFinite(newBalance)||newBalance<0){req.flash('error','ยอดเงินใหม่ไม่ถูกต้อง');return res.redirect('/admin/users')}await cloudStore.transact(d=>{const u=d.users.find(x=>x.id===req.params.id&&!x.cloudAdmin);if(!u)throw new Error('ไม่พบสมาชิก');const previous=Number(u.walletBalance)||0;u.walletBalance=Math.round(newBalance*100)/100;d.walletTransactions.push({id:cloudStore.id(),userId:u.id,type:'admin_adjustment',amount:Math.round((u.walletBalance-previous)*100)/100,note:`แอดมินกำหนดยอดเงินเป็น ฿${u.walletBalance.toLocaleString()}`,createdAt:new Date().toISOString()})});req.flash('success',`กำหนดยอดเงินเป็น ฿${newBalance.toLocaleString()} แล้ว`);res.redirect('/admin/users')});
 app.post('/admin/users/:id/toggle',requireAdmin,async(req,res)=>{await cloudStore.transact(d=>{const u=d.users.find(x=>x.id===req.params.id&&!x.cloudAdmin);if(u)u.status=u.status==='banned'?'active':'banned'});res.redirect('/admin/users')});
 
-app.get('/admin/payment', requireAdmin, (req,res)=>res.render('admin-payment',{title:'บัญชีรับเงินและตรวจสลิป',payment:cloudStore.payment()}));
-function selectedPaymentProvider(body={}){const value=String(Array.isArray(body.slipProvider)?body.slipProvider.at(-1):body.slipProvider||'').trim().toLowerCase();if(paymentService.PROVIDERS.has(value))return value;if(body.rdcwClientId||body.rdcwClientSecret)return'rdcw';if(body.slipokBranchId||body.slipokApiKey)return'slipok';if(body.slipcheckApiKey)return'slipcheck';if(body.slip2goApiKey)return'slip2go';return'easyslip'}
-app.post('/admin/payment', requireAdmin, (req,res)=>{
-  const provider=selectedPaymentProvider(req.body);const p=cloudStore.payment();for(const key of ['easyslipApiKey','slipokBranchId','slipokApiKey','slipcheckApiKey','slipcheckEndpoint','rdcwClientId','rdcwClientSecret','rdcwEndpoint','slip2goApiKey','slip2goEndpoint','promptpayId','promptpayName','bankName','bankAccountNumber','bankAccountName','truemoneyPhone'])p[key]=String(req.body[key]||'').trim();p.slipProvider=provider;p.truemoneyEnabled=req.body.truemoneyEnabled==='on';cloudStore.save();req.flash('success','บันทึกระบบตรวจสลิปและบัญชีรับเงินแล้ว');res.redirect('/admin/payment');
-});
-app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test(selectedPaymentProvider(req.body),req.body)));
-
+app.get('/admin/payment', requireAdmin, async (req,res) => res.render('admin-payment', {title:'ระบบรับเงินร่วมกับเว็บหลัก',payment:await paymentService.configuration()}));
+app.post('/admin/payment', requireAdmin, (req,res)=>{req.flash('error','ตั้งค่า API และบัญชีรับเงินที่เว็บหลัก ระบบเว็บเช่าใช้ชุดเดียวกันอัตโนมัติ');res.redirect('/admin/payment');});
+app.post('/admin/payment/test', requireAdmin, async(req,res)=>res.json(await paymentService.test()));
 // ---------- Landing ----------
 // Pulls a few real product image URLs straight from the live main site's
 // homepage HTML so the "real shop" showcase never shows fake/mockup images.
@@ -526,7 +523,8 @@ app.post('/my-shops/:id/renew', requireLogin, async (req, res) => {
 
 // ---------- Wallet / topup ----------
 app.get('/wallet', requireLogin, async (req, res) => {
-  const savedPayment=cloudStore.payment();const payment={...savedPayment,promptpayEnabled:savedPayment.slipProvider==='easyslip'&&Boolean(savedPayment.promptpayId)};
+  const payment=await paymentService.configuration();
+  if (payment.unavailable) res.locals.messages.error.push(payment.error);
   res.render('wallet', {
     title: 'เติมเงิน',
     payment,
@@ -560,12 +558,13 @@ app.post('/account/topup', requireLogin, async (req, res) => {
 });
 app.get('/account/topup/:id', requireLogin, async (req, res) => {
   const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!request)return res.status(404).send('ไม่พบคำขอเติมเงิน');
-  const payment=cloudStore.payment();res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment, automaticSlipCheck:paymentService.configured(payment), qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
+  const payment=await paymentService.configuration();res.render('wallet-detail', { title: 'รายละเอียดเติมเงิน', request, payment, automaticSlipCheck:paymentService.configured(payment), qrDataUrl:null,settings:{shopName:currentShopName(),branding:{logoImage:currentLogoImage()}} });
 });
 app.post('/account/topup/:id/slip', requireLogin, upload.single('slip'), async (req, res) => {
   if (!req.file) { req.flash('error', 'กรุณาแนบรูปสลิป'); return res.redirect('/account/topup/' + encodeURIComponent(req.params.id)); }
   const result = await walletService.attach(req.session.userId,req.params.id,req.file);
-  req.flash(result.ok ? 'success' : 'error', result.ok ? 'แนบสลิปแล้ว ระบบตรวจสอบเรียบร้อย' : (result.error || 'แนบสลิปไม่สำเร็จ'));
+  await refreshSessionUser(req);
+  req.flash(result.ok && result.item?.status === 'approved' ? 'success' : 'error', result.item?.status === 'approved' ? 'เติมเครดิตเว็บเช่าสำเร็จ' : (result.error || result.item?.slipCheck?.message || 'ยังไม่อนุมัติสลิป กรุณาตรวจสถานะรายการ'));
   res.redirect('/account/topup/' + encodeURIComponent(req.params.id));
 });
 app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
@@ -608,10 +607,11 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 if (require.main === module) {
-  importLegacyPaymentOnce()
-    .catch(e => console.error('[Payment import]', e.message))
+  walletService.syncPaymentHistory()
+    .catch(e => console.error('[Payment history sync]', e.message))
     .finally(() => {
       server = app.listen(PORT, () => {
+        walletService.startRecovery();
         console.log(`Shop Cloud running on ${PORT}`);
         mainApi.ensureSystemLab().then(result => {
           if (!result.ok) console.error('[System Lab]', result.body.error || 'provision failed');

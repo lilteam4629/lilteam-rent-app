@@ -14,8 +14,8 @@ async function run(){
     const created=await wallet.create('owner',100,'bank_transfer');
     const attach=wallet.attach('owner',created.item.id,{originalname:'receipt.png',mimetype:'image/png',buffer:Buffer.from('fixture')});
     await started;
-    assert.equal((await wallet.review(created.item.id,true)).ok,true);
-    resolveVerification({verified:true,raw:{transRef:'fixture-unique'}});await attach;
+    assert.equal((await wallet.review(created.item.id,true)).ok,false, 'Unverified requests cannot bypass the cross-site receipt guard');
+    resolveVerification({checked:true,verified:true,raw:{transRef:'fixture-unique'}});await attach;
     assert.equal(store.user('owner').walletBalance,100);
     assert.equal(store.data.walletTransactions.filter(t=>t.topupId===created.item.id).length,1);
     const saved=JSON.parse(fs.readFileSync(store.FILE,'utf8'));

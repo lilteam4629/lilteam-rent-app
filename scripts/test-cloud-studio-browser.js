@@ -14,6 +14,7 @@ const mock = http.createServer((req, res) => {
   let data = {};
   if (route.endsWith('/plans') || route.endsWith('/license-plans')) data = { plans };
   if (route.endsWith('/shops')) data = { shops };
+  if (route.endsWith('/payments/config')) data = { payment: { sharedPayment: true, automaticSlipCheck: true, slipProvider: 'xepht', bankName: 'ธนาคารตัวอย่าง', bankAccountNumber: '0000000000', bankAccountName: 'ข้อมูลทดสอบ', truemoneyEnabled: false } };
   if (route.endsWith('/admin/rentals')) data = { rentedShops: shops, featureCatalog: [], featureReleases: [], transactions: [], sales: [], discordSettings: {}, discordConfigured: false, discordReady: false };
   if (route.endsWith('/sales')) data = { sales: [] };
   res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data));
