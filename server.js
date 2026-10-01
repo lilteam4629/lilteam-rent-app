@@ -166,7 +166,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.get('/admin/login', (req, res) => res.render('admin-login', { title: 'เข้าสู่ระบบผู้ดูแล' }));
+app.get('/admin/login', (req, res) => req.session.isAdmin ? res.redirect('/admin') : res.render('admin-login', { title: 'เข้าสู่ระบบเจ้าของเว็บเช่า' }));
 
 app.post('/admin/login', async (req, res, next) => {
   try {
@@ -424,7 +424,7 @@ app.post('/login', async (req, res, next) => {
     if(!user && !isAdmin){const legacy=await mainApi.login(username,password);if(legacy.ok){const allowed=await mainApi.legacyEligibility(legacy.body.user.id);if(allowed.ok&&allowed.body.eligible){user={...legacy.body.user,passwordHash:await bcrypt.hash(password,10),role:'customer',status:'active',migratedFromMain:true,createdAt:new Date().toISOString()};cloudStore.data.users.push(user);cloudStore.save();}}}
     if(!isAdmin&&(!user||user.status==='banned'||!await bcrypt.compare(password,user.passwordHash||''))){req.flash('error','ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');return res.redirect('/login');}
     if(isAdmin){user=cloudStore.data.users.find(u=>u.cloudAdmin)||{id:cloudStore.id(),username:ADMIN_USERNAME,email:'',passwordHash:'',role:'customer',status:'active',walletBalance:0,cloudAdmin:true,createdAt:new Date().toISOString()};if(!cloudStore.data.users.includes(user)){cloudStore.data.users.push(user);cloudStore.save();}}
-    const target = safeNext(req.session.returnTo, '/');
+    const target = isAdmin ? '/admin' : safeNext(req.session.returnTo, '/');
     await establishLogin(req, cloudStore.publicUser(user), isAdmin);
     res.redirect(target);
   } catch (error) { next(error); }

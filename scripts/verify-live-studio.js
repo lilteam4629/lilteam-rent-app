@@ -11,6 +11,7 @@ const assert = require('assert');
     assert.equal(await page.locator('[data-screen-tab]').count(), 7, 'New deployment must have seven screenshots');
     assert.equal(await page.locator('link[href="/css/cloud-studio-v2.css?v=studio4"]').count(), 1, 'Updated shared theme stylesheet');
     assert.equal(await page.locator('[data-store-engine]').count(), 1, 'Animated store system');
+    assert.equal(await page.locator('.cloud-footer a[href="/admin/login"]').count(), 1, 'Owner login is discoverable');
     assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--gold').trim()), '#4f70a4');
     await page.waitForTimeout(1100);
     const word = await page.locator('.cloud-stage-word').boundingBox();
