@@ -46,6 +46,21 @@ let child, browser;
     assert(title.y + title.height < image.y, 'Hero image must not overlap YOUR STORE');
   }
   await heroDoesNotOverlap();
+  assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--gold').trim()), '#4f70a4', 'Main storefront light accent');
+  await page.locator('[data-store-engine]').scrollIntoViewIfNeeded();
+  await page.locator('[data-engine-select="0"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-store-engine]').dataset.engineStep === '1');
+  await page.locator('[data-motion-toggle]').click();
+  assert.equal(await page.locator('[data-motion-toggle]').getAttribute('aria-pressed'), 'true');
+  const pausedStep = await page.locator('[data-store-engine]').getAttribute('data-engine-step');
+  await page.waitForTimeout(2800);
+  assert.equal(await page.locator('[data-store-engine]').getAttribute('data-engine-step'), pausedStep, 'Pause stops simulation');
+  await page.locator('[data-engine-select="2"]').click();
+  assert.equal(await page.locator('[data-engine-delivery]').innerText(), 'ข้อมูลพร้อมส่งมอบ');
+  await page.locator('[data-store-engine]').screenshot({ path: path.join(output, 'system-motion-desktop.png') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await page.locator('.engine-hub-orbit').evaluate(el => getComputedStyle(el).animationName), 'none', 'Reduced motion disables orbit');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.locator('.cloud-extra-gallery').scrollIntoViewIfNeeded();
   await page.waitForFunction(() => [...document.querySelectorAll('.cloud-extra-gallery img')].every(img => img.complete && img.naturalWidth > 0));
   assert(await page.locator('.cloud-extra-gallery img').evaluateAll(images => images.every(img => Math.abs(img.clientWidth / img.clientHeight - img.naturalWidth / img.naturalHeight) < .02)), 'Additional images must keep their full original proportions');
@@ -61,6 +76,7 @@ let child, browser;
   assert.equal(await page.locator('[data-screen-tab]').nth(4).getAttribute('aria-selected'), 'true');
   await page.locator('[data-cloud-theme]').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
+  assert.equal(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--gold').trim()), '#9aa1ac', 'Main storefront dark accent');
   await page.locator('[data-cloud-theme]').click();
   for (const route of ['/login', '/register', '/admin/login']) await visit(route);
   await visit('/login'); await page.locator('[name=username]').fill('demo'); await page.locator('[name=password]').fill('fixture-only');
@@ -78,7 +94,11 @@ let child, browser;
   await page.locator('[data-cloud-admin-menu]').click(); assert.equal(await page.locator('[data-cloud-admin-menu]').getAttribute('aria-expanded'), 'true');
   for (const route of ['/', '/my-shops', '/start', '/wallet', '/admin', '/admin/plans', '/admin/rentals', '/admin/topups', '/admin/users', '/admin/payment']) {
     await visit(route);
-    if (route === '/') await heroDoesNotOverlap();
+    if (route === '/') {
+      await heroDoesNotOverlap();
+      await page.locator('[data-store-engine]').scrollIntoViewIfNeeded();
+      await page.locator('[data-store-engine]').screenshot({ path: path.join(output, 'system-motion-mobile.png') });
+    }
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), route + ' overflows mobile viewport');
   }
   await visit('/'); await page.screenshot({ path: path.join(output, 'home-mobile.png'), fullPage: true });
