@@ -17,6 +17,8 @@ const truemoney = require('./services/truemoney');
 const recaptcha = require('./services/recaptcha');
 const CloudSessionStore = require('./lib/session-store');
 const { safeNext, establishLogin } = require('./lib/auth');
+const security = require('./lib/security');
+const { secureUpload, publicUpload, sendPrivateSlip } = require('./lib/upload-security');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,34 +38,38 @@ async function verifySharedCaptcha(token, remoteip) {
   return recaptcha.isConfigured() ? recaptcha.verify(token, remoteip) : false;
 }
 
-app.set('trust proxy', 1);
+app.set('trust proxy', security.trustedProxies);
 app.disable('x-powered-by');
+app.use(security.headers);
+app.use(security.requestFirewall);
+app.use(security.traffic());
+app.use(security.sameOrigin);
 app.use(compression({ threshold: 1024 }));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.get('/health', (req,res)=>res.status(200).json({ok:true,version:'1.0.0',uptime:Math.floor(process.uptime())}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 2000 }));
 const staticMaxAge = process.env.NODE_ENV === 'production' ? '7d' : 0;
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: staticMaxAge }));
-app.use('/uploads', express.static(settings.UPLOADS_DIR, { maxAge: staticMaxAge }));
+app.use('/uploads', publicUpload, express.static(settings.UPLOADS_DIR, { maxAge: staticMaxAge, dotfiles: 'deny' }));
 
-// This app holds no sensitive data of its own — every real fact (users,
-// shops, wallet balance) lives behind the internal API on the main app.
-// A simple in-memory session store is enough; there's nothing here that
-// needs to survive a restart beyond "please log in again".
+// Rental users, wallets and sessions are persisted in private local storage.
+// Main/tenant shop data is accessed through the authenticated internal API.
+const sessionSecret = String(process.env.SESSION_SECRET || '').trim();
+if (process.env.NODE_ENV === 'production' && sessionSecret.length < 32) throw new Error('SESSION_SECRET must have at least 32 characters in production');
 app.use(session({
   name: 'cloud.sid',
   store: new CloudSessionStore(path.join(settings.DATA_DIR, 'sessions')),
-  secret: process.env.SESSION_SECRET || 'rent-app-dev-secret',
+  secret: sessionSecret || 'rent-app-dev-secret',
   resave: false,
   saveUninitialized: false,
   cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 1000 * 60 * 60 * 24 * 7 },
 }));
 app.use(flash());
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = secureUpload(multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 200, parts: 201 } }));
 
 app.use((req, res, next) => {
   res.locals.messages = { success: req.flash('success'), error: req.flash('error') };
@@ -316,7 +322,7 @@ app.get('/admin/topups', requireAdmin, async (req, res) => {
 
 app.get('/admin/topups/:id/slip', requireAdmin, async (req, res) => {
   try {
-    const item=cloudStore.data.topups.find(t=>t.id===req.params.id);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));
+    const item=cloudStore.data.topups.find(t=>t.id===req.params.id);sendPrivateSlip(req,res,settings.UPLOADS_DIR,item,error => res.sendStatus(error.statusCode || 404));
   } catch {
     res.sendStatus(404);
   }
@@ -534,7 +540,7 @@ app.post('/account/topup/truemoney', requireLogin, async (req, res) => {
     // A provider can consume a voucher before a local disk/database write
     // finishes. Never show a generic 500 after that point; the redemption
     // claim is retained and the same link can be retried idempotently.
-    console.error('[TrueMoney topup route]', error);
+    console.error('[TrueMoney topup route]', error.code || error.name || 'Error');
     req.flash('error', 'ระบบรับซองแล้ว แต่กำลังบันทึกยอด กรุณาส่งลิงก์เดิมอีกครั้ง ระบบจะไม่หักซ้ำ');
     return res.redirect('/wallet');
   }
@@ -558,7 +564,7 @@ app.get('/account/topup/:id/status', requireLogin, async (req, res) => {
   const request=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);res.status(request?200:404).json(request?{status:request.status,finished:request.status!=='verifying',slipCheck:request.slipCheck}:{error:'not found'});
 });
 app.get('/account/topup/:id/slip-file', requireLogin, async (req, res, next) => {
-  try {const item=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);if(!item?.slipFile)return res.sendStatus(404);res.sendFile(path.join(settings.UPLOADS_DIR,item.slipFile));}catch(error){next(error)}
+  try {const item=cloudStore.data.topups.find(t=>t.id===req.params.id&&t.userId===req.session.userId);sendPrivateSlip(req,res,settings.UPLOADS_DIR,item,next);}catch(error){next(error)}
 });
 app.get('/account', requireLogin, (req, res) => res.redirect('/'));
 
@@ -573,8 +579,9 @@ app.use((req, res) => {
   res.status(404).render('404', { title: 'ไม่พบหน้านี้' });
 });
 
+app.use(security.errorResponse);
 app.use((err, req, res, next) => {
-  console.error('[Unhandled Server Error]', err);
+  console.error('[Unhandled Server Error]', { name: err.name, code: err.code || 'UNEXPECTED' });
   if (res.headersSent) return next(err);
   res.status(500).render('404', { title: 'เกิดข้อผิดพลาดชั่วคราว' });
 });
