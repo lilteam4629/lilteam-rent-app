@@ -10,18 +10,19 @@
   <%- include('_head-style') %>
   <%- include('_theme-init') %>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="cloud-auth-page min-h-screen flex items-center justify-center p-4">
   <%- include('_public-theme-toggle') %>
   <%- include('_report-issue-button') %>
-  <div class="w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
+  <div class="cloud-auth-card w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
     <div class="mb-4 flex items-center justify-between">
       <a href="/my-shops" class="inline-flex items-center gap-1.5 text-xs text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">
         <span>←</span> <span>ร้านของฉัน</span>
       </a>
       <% if (currentUser) { %><span class="text-xs text-[var(--text-4)]">฿<%= currentUser.walletBalance.toLocaleString() %></span><% } %>
     </div>
+    <%- include('_member-nav', { active: 'start' }) %>
+    <div class="cloud-setup-progress"><span>1 เลือกแพ็กเกจ</span><span>2 ตั้งค่าร้าน</span><span>3 ยืนยันเปิดร้าน</span></div>
     <div class="text-center mb-5">
-      <div class="text-3xl mb-2">🏪</div>
       <h1 class="text-xl font-bold">เปิดร้านของคุณเอง</h1>
       <p class="text-sm text-[var(--text-3)] mt-1">ได้ร้านทันที พร้อมใช้งานเลย</p>
     </div>
@@ -41,7 +42,7 @@
           <div class="space-y-2">
             <% plans.forEach((plan, i) => { %>
               <label class="relative flex items-center justify-between gap-2 rounded-lg border border-[var(--border-light)] bg-[var(--input)] px-3 py-2.5 cursor-pointer">
-                <input type="radio" name="planId" value="<%= plan.id %>" required <%= (preselectedPlanId ? plan.id === preselectedPlanId : i === 0) ? 'checked' : '' %> class="peer sr-only" />
+                <input type="radio" name="planId" value="<%= plan.id %>" data-cloud-plan-price="<%= plan.price %>" data-cloud-plan-days="<%= plan.days %>" required <%= (preselectedPlanId ? plan.id === preselectedPlanId : i === 0) ? 'checked' : '' %> class="peer sr-only" />
                 <span class="absolute inset-0 rounded-lg border-2 border-transparent peer-checked:border-[var(--gold)] peer-checked:bg-[var(--gold)]/10 pointer-events-none"></span>
                 <span class="relative flex items-center gap-2">
                   <span class="text-sm font-medium"><%= plan.days %> วัน</span>
@@ -66,7 +67,8 @@
           <input name="adminPassword" type="password" required minlength="8" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
         </div>
         <% if (recaptchaSiteKey) { %><div class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>"></div><% } %>
-        <button class="w-full bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold rounded-lg py-2.5 text-sm mt-2">🚀 เปิดร้านตอนนี้</button>
+        <div class="cloud-setup-summary"><span>เครดิตที่ใช้เปิดร้าน</span><strong data-cloud-setup-summary></strong></div>
+        <button class="w-full bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold rounded-lg py-2.5 text-sm mt-2">ยืนยันเปิดร้าน</button>
       </form>
       <% if (recaptchaSiteKey) { %><script src="https://www.google.com/recaptcha/api.js" async defer></script><% } %>
     <% } %>

@@ -13,6 +13,9 @@
 <body class="admin-page">
   <div class="admin-content">
     <%- include('_admin-nav', { active: 'branding' }) %>
+    <div class="cloud-admin-head"><div><h1>ศูนย์จัดการ LILTEAM Cloud</h1><p>ดูงานที่ต้องจัดการ ตั้งค่าเว็บ และดูแลบริการเช่าร้านในที่เดียว</p></div><a href="/" target="_blank" rel="noopener" class="cloud-button small">ดูหน้าเว็บ ↗</a></div>
+    <% if (typeof overview !== 'undefined') { %><div class="cloud-admin-metrics"><a href="/admin/topups"><small>รายการรอตรวจสอบ</small><strong><%= overview.pending.toLocaleString('th-TH') %></strong><span>ไปตรวจรายการเติมเงิน →</span></a><a href="/admin/users"><small>สมาชิกเว็บเช่า</small><strong><%= overview.members.toLocaleString('th-TH') %></strong><span>จัดการบัญชีผู้ใช้ →</span></a><a href="/admin/topups"><small>รายการเติมเงินที่อนุมัติ</small><strong><%= overview.topups.toLocaleString('th-TH') %></strong><span>ดูประวัติการเติมเงิน →</span></a></div><% } %>
+    <div class="cloud-admin-tour"><img src="/images/showcase/home.jpg" alt="ภาพตัวอย่างหน้าร้านจริง" width="1440" height="960"><div><h2>แกลเลอรีตัวอย่างเว็บ</h2><p>หน้าแรก รวมสินค้า รายละเอียด และภาพหลังบ้านจากข้อมูลทดสอบ</p><a href="/#example" target="_blank" rel="noopener">ดูตัวอย่างที่ลูกค้าเห็น ↗</a></div></div>
 
     <% messages.error.forEach(m => { %>
       <div class="bg-[var(--coral)]/10 border border-[var(--coral)]/50 text-[var(--coral)] px-4 py-2 rounded-lg mb-3 text-sm"><%= m %></div>

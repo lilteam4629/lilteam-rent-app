@@ -10,6 +10,7 @@ const FormData = require('form-data');
 const bcrypt = require('bcryptjs');
 const mainApi = require('./lib/mainApi');
 const settings = require('./lib/settings');
+const websiteScreens = require('./lib/website-screens');
 const cloudStore = require('./lib/cloud-store');
 const paymentService = require('./lib/payment');
 const walletService = require('./lib/wallet');
@@ -186,6 +187,11 @@ app.get('/admin', requireAdmin, async (req, res) => {
     title: 'จัดการเว็บเช่าร้าน',
     showcaseImages: settings.get().showcaseImages || [],
     showcaseIsCustom: !!(settings.get().showcaseImages && settings.get().showcaseImages.length),
+    overview: {
+      members: cloudStore.data.users.filter(user => !user.cloudAdmin).length,
+      pending: cloudStore.data.topups.filter(topup => topup.status === 'pending' || topup.status === 'verifying').length,
+      topups: cloudStore.data.topups.filter(topup => topup.status === 'approved').length,
+    },
   });
 });
 
@@ -399,6 +405,7 @@ app.get('/', async (req, res) => {
     title: `เช่าเว็บร้านค้าออนไลน์ | ${currentShopName()} Cloud`,
     plans: plansRes.ok ? plansRes.body.plans : (settings.get().cachedPlans || []),
     showcaseImages,
+    websiteScreens,
   });
 });
 
@@ -492,6 +499,7 @@ require('./lib/rental-admin')(app, { mainApi, requireAdmin, requireLogin });
 // ---------- My shops ----------
 app.get('/my-shops', requireLogin, async (req, res) => {
   const [shopsRes, plansRes] = await Promise.all([mainApi.myShops(req.session.userId), mainApi.plans()]);
+  if (!shopsRes.ok) res.locals.messages.error.push('โหลดข้อมูลร้านไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
   if (plansRes.ok && Array.isArray(plansRes.body.plans)) settings.update({ cachedPlans: plansRes.body.plans });
   res.render('my-shops', {
     title: 'ร้านของฉัน',

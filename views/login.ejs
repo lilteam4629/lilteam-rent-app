@@ -10,17 +10,17 @@
   <%- include('_head-style') %>
   <%- include('_theme-init') %>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="cloud-auth-page min-h-screen flex items-center justify-center p-4">
   <%- include('_public-theme-toggle') %>
   <%- include('_report-issue-button') %>
-  <div class="w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
+  <div class="cloud-auth-card w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
     <div class="mb-4">
       <a href="/" class="inline-flex items-center gap-1.5 text-xs text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">
         <span>←</span> <span>กลับหน้าหลัก</span>
       </a>
     </div>
     <div class="text-center mb-5">
-      <div class="text-3xl mb-2">🔑</div>
+      <div class="cloud-auth-mark">L</div>
       <h1 class="text-xl font-bold">เข้าสู่ระบบ</h1>
       <p class="text-sm text-[var(--text-3)] mt-1">เข้าสู่ระบบบัญชีผู้เช่าร้านหรือบัญชีแอดมิน</p>
     </div>
@@ -33,8 +33,8 @@
     <% }) %>
 
     <form action="/login" method="post" class="space-y-3">
-      <input name="username" required placeholder="ชื่อผู้ใช้หรืออีเมล" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
-      <input name="password" type="password" required placeholder="รหัสผ่าน" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+      <input name="username" aria-label="ชื่อผู้ใช้" autocomplete="username" required placeholder="ชื่อผู้ใช้หรืออีเมล" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+      <input name="password" aria-label="รหัสผ่าน" type="password" required placeholder="รหัสผ่าน" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
       <button class="w-full bg-[var(--gold)] hover:bg-[var(--gold-hover)] text-[var(--button-text)] font-semibold rounded-lg py-2.5 text-sm">เข้าสู่ระบบ</button>
     </form>
     <p class="text-xs text-[var(--text-4)] text-center mt-4">ยังไม่มีบัญชี? <a href="/register" class="text-[var(--gold)] underline">สมัครสมาชิก</a></p>

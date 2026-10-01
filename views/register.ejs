@@ -10,10 +10,10 @@
   <%- include('_head-style') %>
   <%- include('_theme-init') %>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="cloud-auth-page min-h-screen flex items-center justify-center p-4">
   <%- include('_public-theme-toggle') %>
   <%- include('_report-issue-button') %>
-  <div class="w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
+  <div class="cloud-auth-card w-full max-w-sm bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6">
     <div class="mb-4">
       <a href="/" class="inline-flex items-center gap-1.5 text-xs text-[var(--text-3)] hover:text-[var(--gold)] transition-colors">
         <span>←</span> <span>กลับหน้าหลัก</span>
@@ -30,9 +30,9 @@
     <% }) %>
 
     <form action="/register" method="post" class="space-y-3">
-      <input name="username" required placeholder="ชื่อผู้ใช้" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+      <input name="username" aria-label="ชื่อผู้ใช้" autocomplete="username" required placeholder="ชื่อผู้ใช้" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
       <input name="email" type="email" required placeholder="อีเมล" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
-      <input name="password" type="password" required minlength="8" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
+      <input name="password" aria-label="รหัสผ่าน" type="password" required minlength="8" placeholder="รหัสผ่าน (อย่างน้อย 8 ตัว)" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
       <input name="confirmPassword" type="password" required placeholder="ยืนยันรหัสผ่าน" class="w-full bg-[var(--input)] border border-[var(--border-light)] rounded-lg px-3 py-2.5 text-sm" />
       <% if (recaptchaSiteKey) { %>
         <div class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>"></div>

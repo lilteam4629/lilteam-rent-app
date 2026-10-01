@@ -1,0 +1,1 @@
+<nav class="cloud-member-nav" aria-label="เมนูบัญชีเว็บเช่า"><% [['shops','/my-shops','ร้านของฉัน'],['start','/start','เปิดร้านใหม่'],['wallet','/wallet','เติมเงิน'],['sales','/sales','ประวัติการเช่า']].forEach(item => { %><a href="<%= item[1] %>" <%= active === item[0] ? 'aria-current=page' : '' %>><%= item[2] %></a><% }) %></nav>
